@@ -33,8 +33,12 @@ RL_Personalizer.spec
 000_ProgramLog/
 000_REDCap/
 000_REDCapControl/
+000_CleverCap/
 000_RewardData/
+000_RankData/
 000_SMS_TO_SEND/
+Clevercap_final_datasets/
+NudgeDataDownload/
 _ProgramLog/
 _SMSChoices/
 protocol_docs/
