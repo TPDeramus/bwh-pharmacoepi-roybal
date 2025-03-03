@@ -18,10 +18,12 @@ from redcap_parser import update_pt_data_with_redcap
 
 def import_pt_data_control(run_time):
     import_date = (run_time - pd.Timedelta("1 day")).date()
-    fp = build_path("000_PatientDataControl", str(import_date) + "_pt_data_control.csv")
+    fp = build_path(os.path.abspath(os.curdir) + ("\\000_PatientDataControl"), str(import_date) + "_pt_data_control.csv")
     date_cols = ["start_date", "censor_date"]
     try:
         pt_data = pd.read_csv(fp, sep=',', parse_dates=date_cols)
+        print("pt_data run")
+        print(pt_data)
     except FileNotFoundError as fnfe:
         while True:
             first_day = input("\nIs today the trial initiation?\n" 
@@ -40,13 +42,17 @@ def import_pt_data_control(run_time):
             sys.exit()
         pt_data = new_empty_pt_data()
         return pt_data
+    print("import_pt_data_control run")
+    print(pt_data)
     return pt_data
 
 def import_redcap_control(run_time):
-    fp = build_path("000_REDCapControl", str(run_time.date()) + "_redcap_control.csv")
+    fp = build_path(os.path.abspath(os.curdir) + ("\\000_REDCapControl"), str(run_time.date()) + "_redcap_control.csv")
     date_cols = ["start_date"]
     try:
         redcap = pd.read_csv(fp, sep=',', parse_dates=date_cols)
+        print("redcap run")
+        print(redcap)
     except FileNotFoundError:
         input("\n" + str(run_time.date()) + "_redcap_control.csv was not found in the REDCapControl folder.\n"
               + "This should be today's date in YYYY-MM-DD format followed by _redcap_control.csv\n"
@@ -55,20 +61,26 @@ def import_redcap_control(run_time):
               + "Please run the program again after fixing the file name.\n"
               + "Press Enter to exit the program and close this window.")
         sys.exit()
+    print("import_redcap_control run")
+    print(redcap)
     return redcap
 
 def check_control_disconnectedness(pillsy, redcap_data, pt_data, run_time):
     if not pt_data.empty and pillsy is not None:
         pt_data = find_rewards(pillsy, pt_data, run_time)
-    
+        print("find_rewards run")
+        print(pt_data)
     pt_data = update_pt_data_with_redcap(redcap_data, pt_data, run_time)
-    
+    print("update_pt_data_with_redcap run")
+    print(pt_data)
     ranked_pt_data = new_empty_pt_data()
     for index, patient in pt_data.iterrows():
-        if patient["censor"] != 1 and patient["censor_date"] > run_time.date():
+        if patient["censor"] != 1 and pd.Timestamp(patient["censor_date"], tz='US/Eastern') > pd.Timestamp(run_time):
             patient= shift_t0_t1_rank_ids(patient)
             patient["trial_day_counter"] += 1
             ranked_pt_data = ranked_pt_data.append(patient)
             
    
-    ranked_pt_data.to_csv(build_path("000_PatientDataControl", str(run_time.date()) + "_pt_data_control.csv"),   index=False)
+    ranked_pt_data.to_csv(build_path(os.path.abspath(os.curdir) + ("\\000_PatientDataControl"), str(run_time.date()) + "_pt_data_control.csv"),   index=False)
+    print("ranked_pt_data saved to csv")
+    print(ranked_pt_data)

@@ -16,7 +16,7 @@ def import_redcap(run_time):
     Does not overwrite old pt_data object since we calculate additional features based on historical data that should not be overwritten.
     This new data will be used to update existing patients: if censored, changes in pillsy rx
     """
-    fp = build_path("000_REDCap", str(run_time.date()) + "_redcap.csv")
+    fp = build_path(os.path.abspath(os.curdir) + ("\\000_REDCap"), str(run_time.date()) + "_redcap.csv")
     date_cols = ["start_date"]
     try:
         redcap = pd.read_csv(fp, sep=',', parse_dates=date_cols)
@@ -29,6 +29,8 @@ def import_redcap(run_time):
               + "Press Enter to exit the program and close this window.")
         sys.exit()
     redcap = redcap_vars_converter(redcap)
+    print("import_redcap run")
+    print(redcap)
     return redcap
 
 
@@ -85,6 +87,8 @@ def redcap_vars_converter(redcap_df):
     redcap_df = redcap_df.replace({'employment_status': 2}, "Retired/Other")
     redcap_df = redcap_df.replace({'marital_status': 1}, "Married/partner")
     redcap_df = redcap_df.replace({'marital_status': 2}, "window/divorced/single/other")
+    print("redcap_vars_converter run")
+    print(redcap_df)
     return redcap_df
 
 
@@ -127,7 +131,7 @@ def update_pt_data_with_redcap(redcap_data, pt_data, run_time):
                 patient["num_pillsy_meds_t2"] = patient["num_pillsy_meds_t1"]
                 patient["num_pillsy_meds_t1"] = patient["num_pillsy_meds_t0"]
                 patient["num_pillsy_meds_t0"] = row["bottles"]
-                new_pt_data = new_pt_data.append(patient)
+                new_pt_data = pd.concat([new_pt_data,patient], ignore_index=True)
 
     # Adding new patients
     for id in unique_study_ids_list_redcap:
@@ -136,7 +140,8 @@ def update_pt_data_with_redcap(redcap_data, pt_data, run_time):
             redcap_row = redcap_data[redcap_data['record_id'] == id].iloc[0]
             if redcap_row['censor'] == 1:
                 continue # skips this patient in the for loop and continues to the next patient
-            if redcap_row['start_date'] > run_time.date(): 
+            #if redcap_row['start_date'] > run_time.date(): 
+            if pd.Timestamp(redcap_row['start_date'], tz='US/Eastern') > pd.Timestamp(run_time):
                 continue 
             if redcap_row["race___5"] == 1 or redcap_row["race___6"] == 1 or redcap_row["race___7"] == 1:
                 race_other = 1
@@ -146,7 +151,7 @@ def update_pt_data_with_redcap(redcap_data, pt_data, run_time):
             new_row = pd.Series({'record_id': id,
                                  'trial_day_counter': 0,
                                  'age': redcap_row["age"],
-                                 'sex': redcap_row["sex"],
+                                 #'sex': redcap_row["sex"],
                                  'num_years_dm_rx': redcap_row["num_years_dm_rx"],
                                  'hba1c': redcap_row["hba1c"],
                                  'race_white': redcap_row["race___1"],
@@ -154,7 +159,7 @@ def update_pt_data_with_redcap(redcap_data, pt_data, run_time):
                                  'race_asian': redcap_row["race___3"],
                                  'race_hispanic': redcap_row["race___4"],
                                  'race_other': race_other,
-                                 'num_physicians': redcap_row["num_physicians"],
+                                 #'num_physicians': redcap_row["num_physicians"],
                                  'num_rx': redcap_row["num_rx"],
                                  'concomitant_insulin_use': redcap_row["concomitant_insulin_use"],
                                  'automaticity': redcap_row["automaticity"],
@@ -197,8 +202,10 @@ def update_pt_data_with_redcap(redcap_data, pt_data, run_time):
                                  'num_days_continuously_disconnected':0,
                                  'contact_disconnected':False,
                                  'num_dates_early_rx_use':0,}, name=id)
-            new_pt_data = new_pt_data.append(new_row)
+            new_pt_data = pd.concat([new_pt_data, new_row], ignore_index=True)
 
+    print("update_pt_data_with_redcap run")
+    print(new_pt_data)
     return new_pt_data
 
 def get_unique_study_ids(df):
@@ -209,4 +216,6 @@ def get_unique_study_ids(df):
     # convert the record id's into a list to return
     unique_study_ids_list = unique_study_ids.values.tolist()
     # returns a list of the unique record_id's in the redcap data
+    print("get_unique_study_ids run")
+    print(unique_study_ids_list)
     return unique_study_ids_list

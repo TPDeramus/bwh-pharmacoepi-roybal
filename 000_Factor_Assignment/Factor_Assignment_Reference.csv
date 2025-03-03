@@ -1,0 +1,17 @@
+﻿openencounter_yn,simplification_yn,coldstate_yn,riskframing_yn,arm_number,arm_description,arm_nb_description
+1,1,1,1,1,"Open encounter alert, simplified language, message sent 2 days before visit, alternative risk framing language","1 - Open encounter alert, simplified language, message sent 2 days before visit, alternative risk framing language"
+1,1,1,0,2,"Open encounter alert, simplified language, message sent 2 days before visit","2 - Open encounter alert, simplified language, message sent 2 days before visit"
+1,0,1,1,3,"Open encounter alert, message sent 2 days before visit, alternative risk framing language","3 - Open encounter alert, message sent 2 days before visit, alternative risk framing language"
+1,0,1,0,4,"Open encounter alert, message sent 2 days before visit","4 - Open encounter alert, message sent 2 days before visit"
+1,1,0,1,5,"Open encounter alert, simplified language, alternative risk framing language","5 - Open encounter alert, simplified language, alternative risk framing language"
+1,1,0,0,6,"Open encounter alert, simplified language","6 - Open encounter alert, simplified language"
+1,0,0,1,7,"Open encounter alter, alternative risk framing language","7 - Open encounter alter, alternative risk framing language"
+1,0,0,0,8,Open encounter alert,8 - Open encounter alert
+0,1,1,1,9,"Order entry alert, simplified language, message sent 2 days before visit, alternative risk framing language","9 - Order entry alert, simplified language, message sent 2 days before visit, alternative risk framing language"
+0,1,1,0,10,"Order entry alert, simplified language, message sent 2 days before visit","10 - Order entry alert, simplified language, message sent 2 days before visit"
+0,0,1,1,11,"Order entry alert, message sent 2 days before visit, alternative risk framing language","11 - Order entry alert, message sent 2 days before visit, alternative risk framing language"
+0,0,1,0,12,"Order entry alert, message sent 2 days before visit","12 - Order entry alert, message sent 2 days before visit"
+0,1,0,1,13,"Order entry alert, simplified language, alternative risk framing language","13 - Order entry alert, simplified language, alternative risk framing language"
+0,1,0,0,14,"Order entry alert, simplified language","14 - Order entry alert, simplified language"
+0,0,0,1,15,"Order entry alert, alternative risk framing language","15 - Order entry alert, alternative risk framing language"
+0,0,0,0,16,Control (no factor assignment),16 - Control (no factor assignment)

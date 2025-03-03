@@ -3,8 +3,9 @@ from azure.cognitiveservices.personalizer import PersonalizerClient
 from azure.cognitiveservices.personalizer.models import RankRequest
 from msrest.authentication import CognitiveServicesCredentials
 from Actions import get_framing_actions, get_history_actions, get_social_actions, get_content_actions, get_reflective_actions
+from Actions_nudge import get_openencounter_actions, get_simplification_actions, get_coldstate_actions, get_riskframing_actions
 from datetime import datetime, date, timedelta
-import pytz
+import sys
 import os
 import pandas as pd
 
@@ -12,34 +13,21 @@ from exe_functions import build_path
 
 
 
-def new_empty_rank_log(run_time):
-    fp = build_path("000_RankData", "empty_rank_log.csv")
-    date_cols = ["start_date", "censor_date"]
-    ranking_log = pd.read_csv(fp, sep=',', header=0, parse_dates=date_cols)
-    return ranking_log
-
 def write_rank_log(ranking_log, run_time):
-    fp = build_path("000_RankData", str(run_time.date()) + "_rank_log.csv")
+    fp = build_path(os.path.abspath(os.curdir) + ("\\000_RankData"), str(run_time.date()) + "_rank_log.csv")
     ranking_log.to_csv(fp, index=False)
 
-def write_sms_history(pt_data, run_time):
-    fp = build_path("000_SMS_TO_SEND", str(run_time.date()) + "_sms_history.csv")
-    # Subset updated_pt_dict to what we need for reward calls and put in dataframe
-    # create an Empty DataFrame object
-    column_values = ['record_id','sms_msg_today', 'factor_set', 'text_number',  'trial_day_counter','censor_date', 'num_days_continuously_disconnected','contact_disconnected']
-    sms_history_dataframe = pd.DataFrame(columns=column_values)
+def write_ehr_history(pt_data, run_time):
+    fp = build_path(os.path.abspath(os.curdir) + ("\\000_Factor_Assignment"), str(run_time.date()) + "_ehr_message_log.csv")
+    # Creating and empty dataframe and filling it is memory inefficient
+    # Creating a list, filling it, then converting to a dataframe is better:
+    # https://stackoverflow.com/questions/13784192/creating-an-empty-pandas-dataframe-and-then-filling-it
+    ehr_list = []
 
     for pt, data in pt_data.iterrows():
         # Reward value, Rank_Id's
-        sms_history_dataframe.loc[len(sms_history_dataframe)] = [data["record_id"], data["sms_msg_today"], data["factor_set"], data["text_number"], data["trial_day_counter"], str(data["censor_date"]), data["num_days_continuously_disconnected"], data["contact_disconnected"]]
-    date_cols = ["start_date", "censor_date"]
-    control_fp = build_path("000_PatientDataControl", str(run_time.date()) + "_pt_data_control.csv")
-    controls = pd.read_csv(control_fp, sep=',', header=0, parse_dates=date_cols)
+        ehr_list.append([data["record_id"], data["sms_msg_today"], data["factor_set"], data["text_number"], data["trial_day_counter"], str(data["censor_date"]), data["num_days_continuously_disconnected"], data["contact_disconnected"]])
 
-    for pt, data in controls.iterrows():
-        # Reward value, Rank_Id's
-        sms_history_dataframe.loc[len(sms_history_dataframe)] = [data["record_id"], 'CONTROL', 'CONTROL', 'CONTROL', data["trial_day_counter"], str(data["censor_date"]), data["num_days_continuously_disconnected"], data["contact_disconnected"]]
-    
     # Writes CSV for RA to send text messages.
     sms_history_dataframe.to_csv(fp, index=False)
 
@@ -65,15 +53,9 @@ def run_ranking(patient, client, run_time):
     actions = get_framing_actions()
 
     frame_rank_request = RankRequest(actions=actions, context_features=context, event_id=rank_id_framing)
-    frame_complete = False
-    while not frame_complete:
-    	try:
-    		frame_response = client.rank(rank_request=frame_rank_request, timeout=1)
-    		frame_complete = True
-    	except:
-    		print('Retrying -- ConnectionError for RankRequest framing - '+ rank_id_framing)
-
+    frame_response = client.rank(rank_request=frame_rank_request)
     framing_ranked = frame_response.reward_action_id
+
     patient = update_framing_ranking(patient, framing_ranked)
 
     # history
@@ -85,14 +67,7 @@ def run_ranking(patient, client, run_time):
         actions = get_history_actions()
         
         history_rank_request = RankRequest(actions=actions, context_features=context, event_id=rank_id_history)
-        history_complete = False
-        while not history_complete:
-        	try:
-       			history_response = client.rank(rank_request=history_rank_request, timeout=1)
-       			history_complete = True
-       		except:
-       			print('Retrying -- ConnectionError for RankRequest history - '+ rank_id_history)
-
+        history_response = client.rank(rank_request=history_rank_request)
         history_ranked = history_response.reward_action_id
         history_response_flag = True
 
@@ -112,13 +87,7 @@ def run_ranking(patient, client, run_time):
     actions = get_social_actions()
 
     social_rank_request = RankRequest(actions=actions, context_features=context, event_id=rank_id_social)
-    social_complete = False
-    while not social_complete:
-    	try:
-    		social_response = client.rank(rank_request=social_rank_request, timeout=1)
-    		social_complete = True
-    	except:
-    		print('Retrying -- ConnectionError for RankRequest social - '+ rank_id_social)
+    social_response = client.rank(rank_request=social_rank_request)
     social_ranked = social_response.reward_action_id
 
     patient = update_social_ranking(patient,social_ranked)
@@ -130,14 +99,7 @@ def run_ranking(patient, client, run_time):
     actions = get_content_actions()
 
     content_rank_request = RankRequest(actions=actions, context_features=context, event_id=rank_id_content)
-    content_complete = False
-    while not content_complete:
-    	try:
-    		content_response = client.rank(rank_request=content_rank_request, timeout=1)
-    		content_complete = True
-    	except:
-    		print('Retrying -- ConnectionError for RankRequest content - '+ rank_id_content)
-    
+    content_response = client.rank(rank_request=content_rank_request)
     content_ranked = content_response.reward_action_id
 
     patient = update_content_ranking(patient, content_ranked)
@@ -150,14 +112,7 @@ def run_ranking(patient, client, run_time):
 
 
     reflective_rank_request = RankRequest(actions=actions, context_features=context, event_id=rank_id_reflective)
-    reflective_complete = False
-    while not reflective_complete:
-    	try:
-    		reflective_response = client.rank(rank_request=reflective_rank_request, timeout=1)
-    		reflective_complete = True
-    	except:
-    		print('Retrying -- ConnectionError for RankRequest reflective - '+ rank_id_reflective)
-    
+    reflective_response = client.rank(rank_request=reflective_rank_request)
     reflective_ranked = reflective_response.reward_action_id
 
     patient = update_reflective_ranking(patient, reflective_ranked)
@@ -352,7 +307,7 @@ def update_num_day_sms(patient):
 
 # Computes and updates the SMS text message to send to this patient today.
 def updated_sms_today(patient):
-    fp = build_path("_SMSChoices", "sms_choices.csv")
+    fp = build_path(os.path.abspath(os.curdir) + ("\\_SMSChoices"), "sms_choices.csv")
     sms_choices = pd.read_csv(fp)
     framing = patient["framing_sms"]
     history = patient["history_sms"]
@@ -486,71 +441,81 @@ def get_num_days_since_features(patient):
     return num_days_since_features_dict
 
 
-def get_framing_context(patient):
-    framing_context = [
-        get_demographics_features(patient),
-        get_clinical_features(patient),
-        get_motivational_features(patient),
-        get_rx_use_features(patient),
-        get_pillsy_med_features(patient),
-        get_observed_feedback_features(patient),
-        get_num_days_since_features(patient)]
-    return framing_context
-
-
-def get_history_context(patient):
-    history_context = [
-        get_demographics_features(patient),
-        get_clinical_features(patient),
-        get_motivational_features(patient),
-        get_rx_use_features(patient),
-        get_pillsy_med_features(patient),
-        get_observed_feedback_features(patient),
-        get_num_days_since_features(patient),
-        {"response_action_id_framing" : patient["response_action_id_framing"]}]
-    return history_context
-
-
-def get_social_context(patient):
-    social_context = [
-        get_demographics_features(patient),
-        get_clinical_features(patient),
-        get_motivational_features(patient),
-        get_rx_use_features(patient),
-        get_pillsy_med_features(patient),
-        get_observed_feedback_features(patient),
-        get_num_days_since_features(patient),
-        {"response_action_id_framing" : patient["response_action_id_framing"]},
-        {"response_action_id_history" : patient["response_action_id_history"]}]
-    return social_context
-
-
-def get_content_context(patient):
-    content_context = [
-        get_demographics_features(patient),
-        get_clinical_features(patient),
-        get_motivational_features(patient),
-        get_rx_use_features(patient),
-        get_pillsy_med_features(patient),
-        get_observed_feedback_features(patient),
-        get_num_days_since_features(patient),
-        {"response_action_id_framing" : patient["response_action_id_framing"]},
-        {"response_action_id_history" : patient["response_action_id_history"]},
-        {"response_action_id_social" : patient["response_action_id_social"]}]
-    return content_context
-
-
-def get_reflective_context(patient):
-    reflective_context = [
-        get_demographics_features(patient),
-        get_clinical_features(patient),
-        get_motivational_features(patient),
-        get_rx_use_features(patient),
-        get_pillsy_med_features(patient),
-        get_observed_feedback_features(patient),
-        get_num_days_since_features(patient),
-        {"response_action_id_framing" : patient["response_action_id_framing"]},
-        {"response_action_id_history" : patient["response_action_id_history"]},
-        {"response_action_id_social" : patient["response_action_id_social"]},
-        {"response_action_id_content" : patient["response_action_id_content"]}]
-    return reflective_context
+def get_context(pcp):
+    statics = dict_df['000_Static_PCP_Info'][dict_df['000_Static_PCP_Info'].study_id.isin([pcp])].drop(columns='study_id')
+    patients = dict_df['000_Patient_Info'][dict_df['000_Patient_Info'].study_id.isin([pcp])].drop(columns='study_id')
+    past_factors = dict_df['000_Past_Factor_Assigment'][dict_df['000_Past_Factor_Assigment'].study_id.isin([pcp])].drop(columns='study_id')
+    ehr_outcomes = dict_df['000_EHR_Patient_Outcomes'][dict_df['000_EHR_Patient_Outcomes'].study_id.isin([pcp])].drop(columns='study_id')
+    
+    if any(len(x) > 1 for x in [statics, past_factors]):
+        input("Multiple entries for static or past factors PCP variables detected for " + 
+              pcp +
+              "! The session will now terminate.")
+        sys.exit()
+    
+    statics = {'sex_pcp': statics['sex_pcp'],
+               'race_pcp_cat': statics['race_pcp_cat'],
+               'providertype_cat': statics['providertype_cat'],
+               'specialty_cat': statics['specialty_cat'],
+               'yearsatatrius_int': statics['yearsatatrius_int'],
+               'panelsize_int': statics['panelsize_int'],
+               'prop_patient65plus': statics['prop_patient65plus'],
+               'avg_patientage': statics['avg_patientage'],
+               'avg_nb_patient_problems': statics['avg_nb_patient_problems'],
+               'avg_nb_appointments': statics['avg_nb_appointments'],
+               'avg_pct_encounters_closed_same_day': statics['avg_pct_encounters_closed_same_day'],
+               'avg_pct_orders_contrib_other_providers': statics['avg_pct_orders_contrib_other_providers'],
+               'avg_doc_length_per_appt': statics['avg_doc_length_per_appt'],
+               'avg_meds_per_appt_signed': statics['avg_meds_per_appt_signed'],
+               'avg_min_in_ehr_workday': statics['avg_min_in_ehr_workday'],
+               'avg_min_in_ehr_outisde_7a7p': statics['avg_min_in_ehr_outisde_7a7p'],
+               'avg_min_notes_appt': statics['avg_min_notes_appt'],
+               'avg_min_inbasket_appt': statics['avg_min_inbasket_appt'],
+               'avg_min_order_appt': statics['avg_min_order_appt'],
+               'avg_min_clinreview_appt': statics['avg_min_clinreview_appt'],
+               'avg_min_unscheduled_days': statics['avg_min_unscheduled_days'],
+               'avg_pct_orders_smartset': statics['avg_pct_orders_smartset'],
+               'admin_fte': statics['admin_fte']
+               }
+    
+    past_factors = {'nb_weeks_since_encounter': past_factors['nb_weeks_since_encounter'],
+                    'nb_weeks_since_coldstate': past_factors['nb_weeks_since_coldstate'],
+                    'nb_weeks_since_simplification': past_factors['nb_weeks_since_simplification'],
+                    'nb_weeks_since_riskframing': past_factors['nb_weeks_since_riskframing']
+                    }
+    
+    pcpcontext = {'pcp_demo': statics, 'pcp_practices': past_factors, 'patients' :{}}
+    
+    for index, pat_study_id in patients.iterrows():
+        patid = pat_study_id['pat_study_id']
+        patient_features = {'pat_age': patients[patients.pat_study_id.isin([patid])]['pat_age'],
+                            'pat_sex': patients[patients.pat_study_id.isin([patid])]['pat_sex'],
+                            'pat_race': patients[patients.pat_study_id.isin([patid])]['pat_race'],
+                            'pat_language': patients[patients.pat_study_id.isin([patid])]['pat_language'],
+                            'encounter_weekday': patients[patients.pat_study_id.isin([patid])]['encounter_weekday'],
+                            'encounter_time': patients[patients.pat_study_id.isin([patid])]['encounter_time'],
+                            'hosp_last90days_yn': patients[patients.pat_study_id.isin([patid])]['hosp_last90days_yn'],
+                            'er_visit_last90days_yn': patients[patients.pat_study_id.isin([patid])]['er_visit_last90days_yn'],
+                            'dementia_yn': patients[patients.pat_study_id.isin([patid])]['dementia_yn'],
+                            'depression_yn': patients[patients.pat_study_id.isin([patid])]['depression_yn'],
+                            'anxiety_yn': patients[patients.pat_study_id.isin([patid])]['anxiety_yn'],
+                            'chronicpain_yn': patients[patients.pat_study_id.isin([patid])]['chronicpain_yn'],
+                            'insomnia_yn': patients[patients.pat_study_id.isin([patid])]['insomnia_yn'],
+                            'samepcp_yn': patients[patients.pat_study_id.isin([patid])]['samepcp_yn'],
+                            'days_since_last_pcpvisit': patients[patients.pat_study_id.isin([patid])]['days_since_last_pcpvisit'],
+                            'nb_pcp_visits_365days': patients[patients.pat_study_id.isin([patid])]['nb_pcp_visits_365days'],
+                            'pcp_prescribed_highriskmed_yn': patients[patients.pat_study_id.isin([patid])]['pcp_prescribed_highriskmed_yn'],
+                            'nb_eligible_meds': patients[patients.pat_study_id.isin([patid])]['nb_eligible_meds'],
+                            'benzo_yn': patients[patients.pat_study_id.isin([patid])]['benzo_yn'],
+                            'sedativehypnotic_yn': patients[patients.pat_study_id.isin([patid])]['sedativehypnotic_yn'],
+                            'anticholinergic_yn': patients[patients.pat_study_id.isin([patid])]['anticholinergic_yn'],
+                            'nb_pills_last180days': patients[patients.pat_study_id.isin([patid])]['nb_pills_last180days']}
+        patient_outcomes = {'out_discontinuation_yn': ehr_outcomes[ehr_outcomes.pat_study_id.isin([patid])]['out_discontinuation_yn'],
+                            'out_taper_yn': ehr_outcomes[ehr_outcomes.pat_study_id.isin([patid])]['out_taper_yn'],
+                            'out_open_smartset_yn': ehr_outcomes[ehr_outcomes.pat_study_id.isin([patid])]['out_open_smartset_yn'],
+                            'out_no_order_yn': ehr_outcomes[ehr_outcomes.pat_study_id.isin([patid])]['out_no_order_yn'],
+                            'out_override_reason_yn': ehr_outcomes[ehr_outcomes.pat_study_id.isin([patid])]['out_override_reason_yn'],
+                            'telemedicine_visit_yn': ehr_outcomes[ehr_outcomes.pat_study_id.isin([patid])]['telemedicine_visit_yn']}
+        pcpcontext['patients'].update({patid: {"patient_demo": patient_features, "patient_outcomes": patient_outcomes}})
+    pcpcontext = [pcpcontext]
+    return pcpcontext

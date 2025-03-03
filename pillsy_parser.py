@@ -17,7 +17,7 @@ def import_Pillsy(run_time):
     """
     import_date = (run_time - pd.Timedelta("1 day")).date()
     pillsy_filename = str(import_date) + "_pillsy.csv"
-    fp = build_path("000_Pillsy", pillsy_filename)
+    fp = build_path(os.path.abspath(os.curdir) + ("\\000_Pillsy"), pillsy_filename)
 
     try:
         pillsy = pd.read_csv(fp)
@@ -65,7 +65,6 @@ def import_Pillsy(run_time):
     pillsy.dropna(
     axis=0,
     how='all',
-    thresh=None,
     subset=None,
     inplace=True)
     #https://hackersandslackers.com/pandas-dataframe-drop/
@@ -74,6 +73,8 @@ def import_Pillsy(run_time):
     # Note: In this dataset our study_id is actually 'firstname', hence the drop of patientId
     # Note: firstname is currently read in as int64 dtype
     pillsy.drop(["patientId", "lastname", "method", "platform"], axis=1, inplace=True)
+    print("import_Pillsy run")
+    print(pillsy)
     return pillsy
 
 
@@ -84,6 +85,8 @@ def get_drugName_list(patient_entries):
         unique_drugNames_df_list = unique_drugNames_df.values.tolist()
     except ValueError:
         unique_drugNames_df_list = []
+    print("unique_drugNames_df_list run")
+    print(unique_drugNames_df_list)
     return unique_drugNames_df_list
 
 
@@ -105,6 +108,8 @@ def identify_drug_freq(drugName):
     elif drugName.find('BID') > -1:
         drugFreq = 2
     # Returns the number of doses that the given Medication is
+    print("drugFreq run")
+    print(drugFreq)
     return drugFreq
 
 
@@ -138,6 +143,8 @@ def find_taken_events(drug, drug_subset):
         else:
             if last_event['eventTime'] + pd.Timedelta('2 hours, 45 minutes') < event['eventTime']:
                     return 1.0 # must be second taken event
+    print("find_taken_events run")
+    print(drug_freq)
     return 0.5
 
 def compute_taken_over_expected(patient, timeframe_pillsy_subset, num_pillsy_meds):
@@ -165,6 +172,8 @@ def compute_taken_over_expected(patient, timeframe_pillsy_subset, num_pillsy_med
         print("taken_over_expected:", taken_over_expected)
     else:
         taken_over_expected = 0
+    print("get_drugName_list run")
+    print(taken_over_expected)
     return taken_over_expected
 
 
@@ -185,6 +194,8 @@ def calc_avg_adherence(patient):
                                           patient["adherence_day1"] + patient["adherence_day2"] + patient["adherence_day3"] + patient["adherence_day4"] + patient["adherence_day5"] + patient["adherence_day6"] + patient["adherence_day7"]) / 7
         patient["avg_adherence_3day"] = (patient["adherence_day1"] + patient["adherence_day2"] + patient["adherence_day3"]) / 3
         patient["avg_adherence_1day"] = patient["adherence_day1"]
+    print("calc_avg_adherence run")
+    print(patient)
     return patient
 
   
@@ -342,6 +353,8 @@ def find_patient_rewards(pillsy_subset, patient, run_time):
     # We update the avg adherences at days 1,3,7 with updated shifted daily adherence values:
     patient = calc_avg_adherence(patient)
 
+    print("find_patient_rewards run")
+    print(patient)
     return patient 
 
 def find_rewards(pillsy, pt_data, run_time):
@@ -362,7 +375,10 @@ def find_rewards(pillsy, pt_data, run_time):
         patient_row = pt_data[pt_data["record_id"] == study_id].iloc[0]
         # This function will update the patient attributes with the updated adherence data that we will find from pillsy
         patient_row = find_patient_rewards(patient_pillsy_subset, patient_row, run_time)
-        rewarded_pt_data = rewarded_pt_data.append(patient_row)
+        #rewarded_pt_data = rewarded_pt_data.append(patient_row)
+        rewarded_pt_data = pd.concat([rewarded_pt_data,patient_row], ignore_index=True)
+    print("find_rewards run")
+    print(rewarded_pt_data)
     return rewarded_pt_data
 
 

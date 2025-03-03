@@ -18,14 +18,33 @@ import os
 from datetime import date
 import http.client, urllib.request, urllib.parse, urllib.error, base64
 
-from exe_functions import build_path
+from exe_functions_nudge import search_directory, relative_date
 
-def get_reward_update(pt_data, run_time):
-    fp = build_path("000_RewardData", str(run_time.date()) + "_reward_updates.csv")
-    today = run_time.date()
-    two_day_ago = (run_time - timedelta(days=2)).date()
-    yesterday = (run_time - timedelta(days=1)).date()
+def get_reward_updates(pcp_dict, run_time):
+    week_list_current = [str(d.date()) for d in pd.date_range(relative_date(run_time-timedelta(7), 0, 0), periods=7).to_pydatetime().tolist()]
+    past_rewards_fois_current = [s + "*reward_updates*.csv" for s in week_list_current]
+    reward_outputs_list_current = []
+    for ext in past_rewards_fois_current:
+        reward_outputs_list_current.extend(search_directory(os.path.abspath(os.curdir), ext))
 
+    week_list_prior = [str(d.date()) for d in pd.date_range(relative_date(run_time-timedelta(14), 0, 0), periods=7).to_pydatetime().tolist()]
+    past_rewards_fois_prior = [s + "*reward_updates*.csv" for s in week_list_prior]
+    reward_outputs_list_prior = []
+    for ext in past_rewards_fois_prior:
+        reward_outputs_list_prior.extend(search_directory(os.path.abspath(os.curdir), ext))
+    if len(reward_outputs_list_prior) == 0 and len(reward_outputs_list_current) >= 1:
+        print("\nOnly one set of prior events detected.\n" +
+              "\nThis will be reflected in the `RankRequest` call.\n")
+        pcp_dict['reward'] = pd.read_csv(reward_outputs_list_current[-1])
+    elif (len(reward_outputs_list_prior) == 0 and len(reward_outputs_list_current) == 0):
+        print("\nNo reward data present.\n" +
+              "\nThis should have been prevented earlier in the workflow.\n"
+              "\nTerminating......\n")
+    else:
+        past_factor_fois_prior = [s + "*factor_assignment*.csv" for s in week_list_prior]
+        factor_outputs_list_prior = []
+        for ext in past_factor_fois_prior:
+            factor_outputs_list_prior.extend(search_directory(os.path.abspath(os.curdir), ext))
 
     # Subset updated_pt_dict to what we need for reward calls and put in dataframe
     # create an Empty DataFrame object
@@ -33,7 +52,7 @@ def get_reward_update(pt_data, run_time):
                      'flag_send_reward_value_tX']
     reward_updates = pd.DataFrame(columns=column_values)
 
-    for pt,data_row in pt_data.iterrows():
+    for pt,data_row in pcp_dict.iterrows():
         # Reward value, Rank_Id's
         if(data_row["flag_send_reward_value_t0"] == True and data_row["censor_date"] >= today):
             reward_row_t0 = [data_row["reward_value_t0"], data_row["rank_id_framing_t0"], data_row["rank_id_history_t0"],
@@ -63,13 +82,8 @@ def send_rewards(reward_updates, client):
             if isinstance(row[j],str):
                 print("reward_val: ", reward_val)
                 print("event_id: ", row[j])
-                complete = False
-                while not complete:
-                    try:
-                        client.events.reward(event_id=row[j], value=reward_val, timeout=1)
-                        complete = True
-                    except:
-                        print('Retrying -- ConnectionError for RewardRequest - '+ row[j])
+                client.events.reward(event_id=row[j], value=reward_val)
+            
 
             ##############---- If checking for connection with Personalizer ###############
             # headers = {

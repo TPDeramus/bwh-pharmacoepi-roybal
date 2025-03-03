@@ -21,7 +21,7 @@ import http.client, urllib.request, urllib.parse, urllib.error, base64
 from exe_functions import build_path
 
 def get_reward_update(pt_data, run_time):
-    fp = build_path("000_RewardData", str(run_time.date()) + "_reward_updates.csv")
+    fp = build_path(os.path.abspath(os.curdir) + ("\\000_RewardData"), str(run_time.date()) + "_reward_updates.csv")
     today = run_time.date()
     two_day_ago = (run_time - timedelta(days=2)).date()
     yesterday = (run_time - timedelta(days=1)).date()
@@ -49,6 +49,8 @@ def get_reward_update(pt_data, run_time):
     # Write csv as a log for what we're sending to Personalizer
     reward_updates.to_csv(fp, index=False)
     reward_updates = reward_updates.to_numpy()
+    print("get_reward_update run")
+    print(reward_updates)
     return reward_updates
 
 
@@ -66,24 +68,25 @@ def send_rewards(reward_updates, client):
                 client.events.reward(event_id=row[j], value=reward_val)
             
 
-            ##############---- If checking for connection with Personalizer ###############
-            # headers = {
-            #     # Request headers
-            #     'Content-Type': 'application/json-patch+json',
-            #     'Ocp-Apim-Subscription-Key': '{subscription key}',
-            # }
+            #############---- If checking for connection with Personalizer ###############
+            headers = {
+                # Request headers
+                'Content-Type': 'application/json-patch+json',
+                'Ocp-Apim-Subscription-Key': 'personalizer_key',
+            }
 
-            # params = urllib.parse.urlencode({
-            # })
+            params = urllib.parse.urlencode({
+            })
 
-            # try:
-            #     conn = http.client.HTTPSConnection('westus2.api.cognitive.microsoft.com')
-            #     conn.request("POST", "/personalizer/v1.0/events/{eventId}/reward?%s" % params, "{body}", headers)
-            #     response = conn.getresponse()
-            #     data = response.read()
-            #     print(data)
-            #     conn.close()
-            # except Exception as e:
-            #     print("[Errno {0}] {1}".format(e.errno, e.strerror))
-
-            ################################################################################
+            try:
+                conn = http.client.HTTPSConnection('westus2.api.cognitive.microsoft.com')
+                conn.request("POST", "/personalizer/v1.0/events/{eventId}/reward?%s" % params, "{body}", headers)
+                response = conn.getresponse()
+                data = response.read()
+                print(data)
+                conn.close()
+            except Exception as e:
+                print("[Errno {0}] {1}".format(e.errno, e.strerror))
+    print("send_rewards run, will print twice")
+    #print(data)
+            ###############################################################################
