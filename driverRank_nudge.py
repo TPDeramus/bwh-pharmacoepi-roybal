@@ -45,7 +45,22 @@ def run_ranking(patient, client, run_time):
     3. Update patient num days since rank calls
     4. Update appropriate sms vars in patient row
     """
-    patient= shift_t0_t1_rank_ids(patient)
+    #patient= shift_t0_t1_rank_ids(patient)
+    
+    str(patient["record_id"]) + "_" + str(patient["trial_day_counter"])
+    
+    context = 
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     # framing
     rank_id_framing = str(patient["record_id"]) + "_" + str(patient["trial_day_counter"]) + "_frame"
     patient["rank_id_framing_t0"] = rank_id_framing
@@ -519,3 +534,17 @@ def get_context(pcp):
         pcpcontext['patients'].update({patid: {"patient_demo": patient_features, "patient_outcomes": patient_outcomes}})
     pcpcontext = [pcpcontext]
     return pcpcontext
+
+def get_context(pcp,pcp_dict):
+    pcp_out = dict(enumerate(pcp_dict['pcp'][pcp_dict['pcp'].study_id.isin([pcp])].drop(columns='study_id').to_dict('records')))
+    pcp_out['pcp'] = pcp_out.pop(0)
+    pcp_out['patients'] = {}
+    patframe = pcp_dict['patients'][pcp_dict['patients'].study_id.isin([pcp])].drop(columns='study_id')
+    
+    for index, pat_study_id in patframe.iterrows():
+        patid = pat_study_id['pat_study_id']
+        patout = dict(enumerate(patframe[patframe.pat_study_id.isin([patid])].drop(columns='pat_study_id').to_dict('records')))
+        patout[patid] = patout.pop(0)
+        pcp_out['patients'].update(patout)
+    pcp_out = [pcp_out]
+    return(pcp_out)

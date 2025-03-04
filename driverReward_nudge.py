@@ -32,7 +32,8 @@ def get_reward_updates(pcp_dict, run_time):
     reward_outputs_list_prior = []
     for ext in past_rewards_fois_prior:
         reward_outputs_list_prior.extend(search_directory(os.path.abspath(os.curdir), ext))
-    if len(reward_outputs_list_prior) == 0 and len(reward_outputs_list_current) >= 1:
+
+    if len(reward_outputs_list_prior) == 0 and len(reward_outputs_list_current) == 1:
         print("\nOnly one set of prior events detected.\n" +
               "\nThis will be reflected in the `RankRequest` call.\n")
         pcp_dict['reward'] = pd.read_csv(reward_outputs_list_current[-1])
@@ -41,49 +42,68 @@ def get_reward_updates(pcp_dict, run_time):
               "\nThis should have been prevented earlier in the workflow.\n"
               "\nTerminating......\n")
     else:
-        past_factor_fois_prior = [s + "*factor_assignment*.csv" for s in week_list_prior]
+        pcp_dict['reward'] = pd.read_csv(reward_outputs_list_current[-1])
+        past_factor_fois_prior = [s + "*past*factor_assignment*.csv" for s in week_list_current]
         factor_outputs_list_prior = []
         for ext in past_factor_fois_prior:
             factor_outputs_list_prior.extend(search_directory(os.path.abspath(os.curdir), ext))
+        if len(factor_outputs_list_prior) == 0:
+            print("\nFactor assignments from previous week missing\n" +
+                  "\nTerminating......\n")
+        else:
+            pcp_dict['pcp'] = pd.merge(pcp_dict['pcp'],pd.read_csv(factor_outputs_list_prior[-1]), how="left", on=["study_id"])
 
     # Subset updated_pt_dict to what we need for reward calls and put in dataframe
     # create an Empty DataFrame object
-    column_values = ['reward', 'frame_id', 'history_id', 'social_id', 'content_id', 'reflective_id', 'record_id', 'trial_day_counter', 
-                     'flag_send_reward_value_tX']
-    reward_updates = pd.DataFrame(columns=column_values)
+    
+    # column_values = ['reward', 'frame_id', 'history_id', 'social_id', 'content_id', 'reflective_id', 'record_id', 'trial_day_counter', 
+    #                  'flag_send_reward_value_tX']
+    # reward_updates = pd.DataFrame(columns=column_values)
+    
+        reward_fois_prior = [s + "*reward*updates.csv" for s in week_list_current]
+        reward_output_list_prior = []
+        for ext in reward_fois_prior:
+            reward_output_list_prior.extend(search_directory(os.path.abspath(os.curdir), ext))
 
-    for pt,data_row in pcp_dict.iterrows():
-        # Reward value, Rank_Id's
-        if(data_row["flag_send_reward_value_t0"] == True and data_row["censor_date"] >= today):
-            reward_row_t0 = [data_row["reward_value_t0"], data_row["rank_id_framing_t0"], data_row["rank_id_history_t0"],
-                       data_row["rank_id_social_t0"], data_row["rank_id_content_t0"], data_row["rank_id_reflective_t0"],
-                       data_row["record_id"], data_row["trial_day_counter"], "flag_send_reward_value_t0"]
-            reward_updates.loc[len(reward_updates)] = reward_row_t0
-        if(data_row["flag_send_reward_value_t1"] == True and data_row["censor_date"] >= yesterday):
-            reward_row_t1 = [data_row["reward_value_t1"], data_row["rank_id_framing_t1"], data_row["rank_id_history_t1"],
-                       data_row["rank_id_social_t1"], data_row["rank_id_content_t1"], data_row["rank_id_reflective_t1"],
-                       data_row["record_id"], data_row["trial_day_counter"], "flag_send_reward_value_t1"]
-            reward_updates.loc[len(reward_updates)] = reward_row_t1
+        pcp_dict['reward'] = pd.read_csv(reward_output_list_prior[-1])
+        pcp_dict['reward']['reward'] = np.where(pcp_dict['reward']['reward'] == False, np.nan, pcp_dict['reward']['reward'])
+    # for pt,data_row in pt_data.iterrows():
+    #     # Reward value, Rank_Id's
+    #     if(data_row["flag_send_reward_value_t0"] == True):
+    #         reward_row_t0 = [data_row["reward_value_t0"], data_row["rank_id_framing_t0"], data_row["rank_id_history_t0"],
+    #                    data_row["rank_id_social_t0"], data_row["rank_id_content_t0"], data_row["rank_id_reflective_t0"],
+    #                    data_row["record_id"], data_row["trial_day_counter"], "flag_send_reward_value_t0"]
+    #         reward_updates.loc[len(reward_updates)] = reward_row_t0
+    #     if(data_row["flag_send_reward_value_t1"] == True):
+    #         reward_row_t1 = [data_row["reward_value_t1"], data_row["rank_id_framing_t1"], data_row["rank_id_history_t1"],
+    #                    data_row["rank_id_social_t1"], data_row["rank_id_content_t1"], data_row["rank_id_reflective_t1"],
+    #                    data_row["record_id"], data_row["trial_day_counter"], "flag_send_reward_value_t1"]
+    #         reward_updates.loc[len(reward_updates)] = reward_row_t1
        
-    # Write csv as a log for what we're sending to Personalizer
-    reward_updates.to_csv(fp, index=False)
-    reward_updates = reward_updates.to_numpy()
-    return reward_updates
+    # # Write csv as a log for what we're sending to Personalizer
+    # reward_updates.to_csv(fp, index=False)
+    # reward_updates = reward_updates.to_numpy()
+    return pcp_dict
 
 
-def send_rewards(reward_updates, client):
+def send_rewards(pcp_dict, client):
     # column_values = ['reward', '
     #   frame_id', 'history_id', 'social_id', 'content_id', 'reflective_id',
     #   'study_id', 'trial_day_counter']
-    for i in range(0,reward_updates.shape[0]):
-        row = reward_updates[i, :]
-        reward_val = row[0] 
-        for j in range(1,6):
-            if isinstance(row[j],str):
-                print("reward_val: ", reward_val)
-                print("event_id: ", row[j])
-                client.events.reward(event_id=row[j], value=reward_val)
-            
+    # for i in range(0,reward_updates.shape[0]):
+    #     row = reward_updates[i, :]
+    #     reward_val = row[0] 
+    #     for j in range(1,6):
+    #         if isinstance(row[j],str):
+    #             print("reward_val: ", reward_val)
+    #             print("event_id: ", row[j])
+    #             client.events.reward(event_id=row[j], value=reward_val)
+    
+    for pt,data_row in pcp_dict['reward'].iterrows():
+        if np.isnan(data_row['reward']) != True:
+            print("\nUpdating call " + data_row['id'] + "\n"
+                  "\nwith reward value " + str(data_row['reward']) + "...\n")
+            client.events.reward(event_id=data_row['id'], value=data_row['reward'])
 
             ##############---- If checking for connection with Personalizer ###############
             # headers = {

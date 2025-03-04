@@ -23,7 +23,7 @@ import re
 import glob
 
 from patient_data import import_pt_data, new_empty_pt_data
-from patient_data_nudge import import_pt_info
+from patient_data_nudge import import_pt_info, import_pt_outcomes
 from driverReward_nudge import get_reward_updates, send_rewards
 from driverRank import run_ranking, write_sms_history, new_empty_rank_log, write_rank_log
 from exe_functions_nudge import build_path, relative_date, remove_common, search_directory
@@ -84,10 +84,6 @@ pcp_dict = import_pt_info(run_time)
 # except FileNotFoundError:
 #     print("Participant import failed. Check filenames and re-run.")
 
-print("--------------------CHECKING FOR AVAILABLE REWARD DATA----------------")
-if pcp_dict['reward'] == True:
-    pcp_dict = get_reward_updates(pcp_dict, run_time)
-
 ## Set Up MS Azure Personalizer Client
 print("------------------------CREATE PERSONALIZER CLIENT--------------------")
 with open(build_path(os.path.abspath(os.curdir) + ("\\.keys"), "azure-personalizer-key.txt"), 'r') as f:
@@ -97,12 +93,23 @@ client = PersonalizerClient(
     CognitiveServicesCredentials(personalizer_key)
 )
 
-# ## Rank Step
+print("--------------------CHECKING FOR AVAILABLE REWARD DATA----------------")
+if pcp_dict['reward'] == True:
+    pcp_dict = import_pt_outcomes(pcp_dict,run_time)
+    pcp_dict = get_reward_updates(pcp_dict, run_time)
+    send_rewards(pcp_dict, client)
+
+## Rank Step
 # Call Personalizer to rank action features to find the correct EHR message to send today.
 
 ranked_pt_data = new_empty_pt_data()
 ranking_log = new_empty_rank_log(run_time)
-print("---------------------------------RANKING PATIENTS---------------------------------")
+
+
+print("---------------------------RANKING PCPS-------------------------------")
+for pcps in pcp_dict['pcp']['study_id'].unique():
+
+
 for index, patient in pt_data.iterrows():
     if patient["censor"] != 1 and pd.Timestamp(patient["censor_date"], tz='US/Eastern') > run_time:
         patient, pt_rank_log = run_ranking(patient, client, run_time)

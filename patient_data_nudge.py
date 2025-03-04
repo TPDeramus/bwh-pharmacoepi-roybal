@@ -101,6 +101,20 @@ def import_pt_info(run_time):
             pcp_dict['reward'] = True
     return pcp_dict
 
+def import_pt_outcomes(pcp_dict,run_time):
+    week_list = [str(d.date()) for d in pd.date_range(relative_date(run_time-timedelta(7), 0, 0), periods=7).to_pydatetime().tolist()]
+    fois = [s + "*patient_outcomes*.csv" for s in week_list]
+    files_list = []
+    for ext in fois:
+        files_list.extend(search_directory(os.path.abspath(os.curdir), ext))
+    if pcp_dict['reward'] == True and len(files_list) > 0:
+        try:
+            pcp_dict['patients']=pd.merge(pcp_dict['patients'],pd.read_csv(files_list[-1]), how="left", on=["study_id","pat_study_id"])
+        except FileNotFoundError:
+            print("\nNo patient outcome files found.\n" +
+                  "\nTerminating.....\n")
+    return pcp_dict
+
 def get_pat_study_ids(pcp_dict):
     try:
     # Subsets the pat_study_id column to find the unique pat_study_id's for each patient
