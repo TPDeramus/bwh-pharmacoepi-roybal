@@ -60,13 +60,25 @@ def get_reward_updates(pcp_dict, run_time):
     #                  'flag_send_reward_value_tX']
     # reward_updates = pd.DataFrame(columns=column_values)
     
+    
+    # #Previous tested workflow
+    #     reward_fois_prior = [s + "*reward*updates.csv" for s in week_list_current]
+    #     reward_output_list_prior = []
+    #     for ext in reward_fois_prior:
+    #         reward_output_list_prior.extend(search_directory(os.path.abspath(os.curdir), ext))
+
+    #     pcp_dict['reward'] = pd.read_csv(reward_output_list_prior[-1])
+    #     pcp_dict['reward']['reward'] = np.where(pcp_dict['reward']['reward'] == False, np.nan, pcp_dict['reward']['reward'])
+    
+    #Previous tested workflow
         reward_fois_prior = [s + "*reward*updates.csv" for s in week_list_current]
         reward_output_list_prior = []
         for ext in reward_fois_prior:
             reward_output_list_prior.extend(search_directory(os.path.abspath(os.curdir), ext))
 
         pcp_dict['reward'] = pd.read_csv(reward_output_list_prior[-1])
-        pcp_dict['reward']['reward'] = np.where(pcp_dict['reward']['reward'] == False, np.nan, pcp_dict['reward']['reward'])
+        pcp_dict['reward']['reward'] = np.where(pcp_dict['reward']['flag_send_reward_value_tX'] == "flag_send_reward_value_t0", np.nan, pcp_dict['reward']['reward'])
+    
     # for pt,data_row in pt_data.iterrows():
     #     # Reward value, Rank_Id's
     #     if(data_row["flag_send_reward_value_t0"] == True):
@@ -101,28 +113,13 @@ def send_rewards(pcp_dict, client):
     
     for pt,data_row in pcp_dict['reward'].iterrows():
         if np.isnan(data_row['reward']) != True:
-            print("\nUpdating call " + data_row['id'] + "\n"
+            #Added to account for the new format
+            for column in data_row[['OpenEnc_id','Simplification_id','ColdState_id','RiskFraming_id']]:
+                # Select column contents by column
+                # name using [] operator
+                #columnSeriesObj = data_row[column]
+                #print('Column Name : ', column)
+                #print('Column Contents : ', columnSeriesObj.values)
+                print("\nUpdating call " + column + "\n"
                   "\nwith reward value " + str(data_row['reward']) + "...\n")
-            client.events.reward(event_id=data_row['id'], value=data_row['reward'])
-
-            ##############---- If checking for connection with Personalizer ###############
-            # headers = {
-            #     # Request headers
-            #     'Content-Type': 'application/json-patch+json',
-            #     'Ocp-Apim-Subscription-Key': '{subscription key}',
-            # }
-
-            # params = urllib.parse.urlencode({
-            # })
-
-            # try:
-            #     conn = http.client.HTTPSConnection('westus2.api.cognitive.microsoft.com')
-            #     conn.request("POST", "/personalizer/v1.0/events/{eventId}/reward?%s" % params, "{body}", headers)
-            #     response = conn.getresponse()
-            #     data = response.read()
-            #     print(data)
-            #     conn.close()
-            # except Exception as e:
-            #     print("[Errno {0}] {1}".format(e.errno, e.strerror))
-
-            ################################################################################
+                client.events.reward(event_id=column, value=data_row['reward'])

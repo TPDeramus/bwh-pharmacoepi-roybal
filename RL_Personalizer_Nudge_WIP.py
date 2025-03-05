@@ -22,10 +22,10 @@ import os
 import re
 import glob
 
-from patient_data import import_pt_data, new_empty_pt_data
+#from patient_data import import_pt_data, new_empty_pt_data
 from patient_data_nudge import import_pt_info, import_pt_outcomes
 from driverReward_nudge import get_reward_updates, send_rewards
-from driverRank import run_ranking, write_sms_history, new_empty_rank_log, write_rank_log
+from driverRank_nudge import run_ranking
 from exe_functions_nudge import build_path, relative_date, remove_common, search_directory
 
 
@@ -102,13 +102,23 @@ if pcp_dict['reward'] == True:
 ## Rank Step
 # Call Personalizer to rank action features to find the correct EHR message to send today.
 
-ranked_pt_data = new_empty_pt_data()
-ranking_log = new_empty_rank_log(run_time)
+#ranked_pt_data = new_empty_pt_data()
+#ranking_log = new_empty_rank_log(run_time)
 
 
 print("---------------------------RANKING PCPS-------------------------------")
-for pcps in pcp_dict['pcp']['study_id'].unique():
-
+ranking_log = []
+ehr_log = []
+for pcp in pcp_dict['pcp']['study_id'].unique():
+    #print(pcp)
+    pcp_unique = pcp_dict
+    for key in pcp_dict.keys():
+        pcp_unique[key]=pcp_dict[key][pcp_dict[key].study_id.isin([pcp])]
+        #print(pcp_unique)
+    pcp_rank_log, pcp_ehr_log = run_ranking(pcp, pcp_unique, client)
+    #pcp_rank_log, pcp_ehr_log = run_ranking(pcp, pcp_unique, client, run_time)
+    ranking_log.append(pcp_rank_log)
+    ehr_log.append(pcp_ehr_log)
 
 for index, patient in pt_data.iterrows():
     if patient["censor"] != 1 and pd.Timestamp(patient["censor_date"], tz='US/Eastern') > run_time:
