@@ -26,7 +26,7 @@ import copy
 #from patient_data import import_pt_data, new_empty_pt_data
 from patient_data_nudge import import_pt_info, import_pt_outcomes
 from driverReward_nudge import get_reward_updates, send_rewards
-from driverRank_nudge import run_ranking, generate_rank_log, write_ehr_history
+from driverRank_nudge import run_ranking, generate_rank_log, write_ehr_history, update_weekly_vars
 from exe_functions_nudge import build_path, relative_date, remove_common, search_directory
 
 
@@ -138,6 +138,10 @@ ehr_log = write_ehr_history(ehr_log, run_time)
 #     build_path(os.path.abspath(os.curdir) + ("\\000_PatientData"), str(run_time.date()) + "_pt_data.csv"), 
 #     index=False
 # )
+
+print("----------------------------UPDATING WEEKLY METRICS-------------------------------")
+update_weekly_vars(pcp_dict, ranking_log, run_time)
+
 
 print("-----------------------------------------------------------------------------------")
 #log_file.close()

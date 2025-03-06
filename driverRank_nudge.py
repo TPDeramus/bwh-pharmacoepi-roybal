@@ -16,7 +16,7 @@ from exe_functions import build_path
 
 def update_weekly_vars(pcp_dict, ranking_log, run_time):
     fp = build_path(os.path.abspath(os.curdir) + ("\\000_Past_Factor_Assigment"), str(run_time.date()) + "_past_factor_assignment.csv")
-    if pcp_dict['pcp'][[column for column in pcp_dict['pcp'].columns if column.startswith('nb') or column.endswith('id')]]==1:
+    if pcp_dict['pcp'][[column for column in pcp_dict['pcp'].columns if column.startswith('nb') or column.endswith('id')]].shape[1]==1:
         week_update = pcp_dict['pcp'][[column for column in pcp_dict['pcp'].columns if column.startswith('nb') or column.endswith('id')]].assign(nb_weeks_since_encounter=0, nb_weeks_since_coldstate=0, nb_weeks_since_simplification = 0, nb_weeks_since_riskframing = 0)
     else:
         week_update = pcp_dict['pcp'][[column for column in pcp_dict['pcp'].columns if column.startswith('nb') or column.endswith('id')]]
