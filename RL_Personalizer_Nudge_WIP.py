@@ -21,11 +21,12 @@ import pytz
 import os
 import re
 import glob
+import copy
 
 #from patient_data import import_pt_data, new_empty_pt_data
 from patient_data_nudge import import_pt_info, import_pt_outcomes
 from driverReward_nudge import get_reward_updates, send_rewards
-from driverRank_nudge import run_ranking
+from driverRank_nudge import run_ranking, generate_rank_log, write_ehr_history
 from exe_functions_nudge import build_path, relative_date, remove_common, search_directory
 
 
@@ -110,32 +111,33 @@ print("---------------------------RANKING PCPS-------------------------------")
 ranking_log = []
 ehr_log = []
 for pcp in pcp_dict['pcp']['study_id'].unique():
-    #print(pcp)
-    pcp_unique = pcp_dict
-    for key in pcp_dict.keys():
-        pcp_unique[key]=pcp_dict[key][pcp_dict[key].study_id.isin([pcp])]
+    print(pcp)
+    pcp_unique = copy.deepcopy(pcp_dict)
+    for key in pcp_unique.keys():
+        #print(pcp)
+        pcp_unique[key]=pcp_unique[key][pcp_unique[key].study_id.isin([pcp])]
         #print(pcp_unique)
     pcp_rank_log, pcp_ehr_log = run_ranking(pcp, pcp_unique, client)
     #pcp_rank_log, pcp_ehr_log = run_ranking(pcp, pcp_unique, client, run_time)
     ranking_log.append(pcp_rank_log)
     ehr_log.append(pcp_ehr_log)
 
-for index, patient in pt_data.iterrows():
-    if patient["censor"] != 1 and pd.Timestamp(patient["censor_date"], tz='US/Eastern') > run_time:
-        patient, pt_rank_log = run_ranking(patient, client, run_time)
-        ranked_pt_data = ranked_pt_data.append(patient)
-        ranking_log = ranking_log.append(pt_rank_log)
+# for index, patient in pt_data.iterrows():
+#     if patient["censor"] != 1 and pd.Timestamp(patient["censor_date"], tz='US/Eastern') > run_time:
+#         patient, pt_rank_log = run_ranking(patient, client, run_time)
+#         ranked_pt_data = ranked_pt_data.append(patient)
+#         ranking_log = ranking_log.append(pt_rank_log)
 
 print("---------------------------------EXPORT RANK LOG FILE-----------------------------")
-write_rank_log(ranking_log, run_time)
+generate_rank_log(ranking_log, run_time)
 # ## Output SMS and Patient Data
 
-print("---------------------------------EXPORT SMS FILE----------------------------------")
-write_sms_history(ranked_pt_data, run_time)
-ranked_pt_data.to_csv(
-    build_path(os.path.abspath(os.curdir) + ("\\000_PatientData"), str(run_time.date()) + "_pt_data.csv"), 
-    index=False
-)
+print("---------------------------------EXPORT EHR FILE----------------------------------")
+write_ehr_history(ehr_log, run_time)
+# ranked_pt_data.to_csv(
+#     build_path(os.path.abspath(os.curdir) + ("\\000_PatientData"), str(run_time.date()) + "_pt_data.csv"), 
+#     index=False
+# )
 
 print("-----------------------------------------------------------------------------------")
 #log_file.close()

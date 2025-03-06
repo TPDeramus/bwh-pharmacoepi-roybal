@@ -7,30 +7,70 @@ from Actions_nudge import get_OpenEnc_actions, get_Simplification_actions, get_C
 from datetime import datetime, date, timedelta
 import sys
 import os
+import numpy as np
 import pandas as pd
 
 from itertools import groupby
 from exe_functions import build_path
 
+def update_weekly_vars(run_time):
+    print("greg")
+    return(greg)
 
-
-def write_rank_log(ranking_log, run_time):
+def generate_rank_log(ranking_log, run_time):
     fp = build_path(os.path.abspath(os.curdir) + ("\\000_RankData"), str(run_time.date()) + "_rank_log.csv")
+    ranking_log = pd.DataFrame(ranking_log[0:],columns=['study_id','weekly_counter', 'response_action_id_OpenEnc', 'noOpenEnc', 'yesOpen', 'response_action_id_Simplification', 'noSimplification', 'yesSimplification', 'response_action_id_ColdState', 'noColdState', 'yesColdState', 'response_action_id_RiskFrame', 'noRiskFrame', 'yesRiskFrame'])
     ranking_log.to_csv(fp, index=False)
+    return(ranking_log)
 
-def write_ehr_history(pt_data, run_time):
+def write_ehr_history(ehr_log, run_time):
     fp = build_path(os.path.abspath(os.curdir) + ("\\000_Factor_Assignment"), str(run_time.date()) + "_ehr_message_log.csv")
-    # Creating and empty dataframe and filling it is memory inefficient
-    # Creating a list, filling it, then converting to a dataframe is better:
-    # https://stackoverflow.com/questions/13784192/creating-an-empty-pandas-dataframe-and-then-filling-it
-    ehr_list = []
-
-    for pt, data in pt_data.iterrows():
-        # Reward value, Rank_Id's
-        ehr_list.append([data["record_id"], data["sms_msg_today"], data["factor_set"], data["text_number"], data["trial_day_counter"], str(data["censor_date"]), data["num_days_continuously_disconnected"], data["contact_disconnected"]])
-
+    ehr_log = pd.DataFrame(ehr_log[0:],columns=['study_id', 'weekly_counter', 'openencounter_yn', 'simplification_yn', 'coldstate_yn', 'riskframing_yn'])
+    conditions = [
+        (ehr_log["openencounter_yn"].eq(1) & ehr_log["simplification_yn"].eq(1) & ehr_log["coldstate_yn"].eq(1) & ehr_log["riskframing_yn"].eq(1)),
+        (ehr_log["openencounter_yn"].eq(1) & ehr_log["simplification_yn"].eq(1) & ehr_log["coldstate_yn"].eq(1) & ehr_log["riskframing_yn"].eq(0)),
+        (ehr_log["openencounter_yn"].eq(1) & ehr_log["simplification_yn"].eq(0) & ehr_log["coldstate_yn"].eq(1) & ehr_log["riskframing_yn"].eq(1)),
+        (ehr_log["openencounter_yn"].eq(1) & ehr_log["simplification_yn"].eq(0) & ehr_log["coldstate_yn"].eq(1) & ehr_log["riskframing_yn"].eq(0)),
+        (ehr_log["openencounter_yn"].eq(1) & ehr_log["simplification_yn"].eq(1) & ehr_log["coldstate_yn"].eq(0) & ehr_log["riskframing_yn"].eq(1)),
+        (ehr_log["openencounter_yn"].eq(1) & ehr_log["simplification_yn"].eq(1) & ehr_log["coldstate_yn"].eq(0) & ehr_log["riskframing_yn"].eq(0)),
+        (ehr_log["openencounter_yn"].eq(1) & ehr_log["simplification_yn"].eq(0) & ehr_log["coldstate_yn"].eq(0) & ehr_log["riskframing_yn"].eq(1)),
+        (ehr_log["openencounter_yn"].eq(1) & ehr_log["simplification_yn"].eq(0) & ehr_log["coldstate_yn"].eq(0) & ehr_log["riskframing_yn"].eq(0)),
+        (ehr_log["openencounter_yn"].eq(0) & ehr_log["simplification_yn"].eq(1) & ehr_log["coldstate_yn"].eq(1) & ehr_log["riskframing_yn"].eq(1)),
+        (ehr_log["openencounter_yn"].eq(0) & ehr_log["simplification_yn"].eq(1) & ehr_log["coldstate_yn"].eq(1) & ehr_log["riskframing_yn"].eq(0)),
+        (ehr_log["openencounter_yn"].eq(0) & ehr_log["simplification_yn"].eq(0) & ehr_log["coldstate_yn"].eq(1) & ehr_log["riskframing_yn"].eq(1)),
+        (ehr_log["openencounter_yn"].eq(0) & ehr_log["simplification_yn"].eq(0) & ehr_log["coldstate_yn"].eq(1) & ehr_log["riskframing_yn"].eq(0)),
+        (ehr_log["openencounter_yn"].eq(0) & ehr_log["simplification_yn"].eq(1) & ehr_log["coldstate_yn"].eq(0) & ehr_log["riskframing_yn"].eq(1)),
+        (ehr_log["openencounter_yn"].eq(0) & ehr_log["simplification_yn"].eq(1) & ehr_log["coldstate_yn"].eq(0) & ehr_log["riskframing_yn"].eq(0)),
+        (ehr_log["openencounter_yn"].eq(0) & ehr_log["simplification_yn"].eq(0) & ehr_log["coldstate_yn"].eq(0) & ehr_log["riskframing_yn"].eq(1)),
+        (ehr_log["openencounter_yn"].eq(0) & ehr_log["simplification_yn"].eq(0) & ehr_log["coldstate_yn"].eq(0) & ehr_log["riskframing_yn"].eq(0)),
+        ]
+    
+    arm = list(range(1,17))
+      
+    ehr_log['arm_number'] = np.select(conditions, arm)
+    
+    ehr_log['arm_description'] = ehr_log["arm_number"].case_when([
+        (ehr_log.eval("arm_number == 1"), "Open encounter alert, simplified language, message sent 2 days before visit, alternative risk framing language"),
+        (ehr_log.eval("arm_number == 2"), "Open encounter alert, simplified language, message sent 2 days before visit"),
+        (ehr_log.eval("arm_number == 3"), "Open encounter alert, message sent 2 days before visit, alternative risk framing language"),
+        (ehr_log.eval("arm_number == 4"), "Open encounter alert, message sent 2 days before visit"),
+        (ehr_log.eval("arm_number == 5"), "Open encounter alert, simplified language, alternative risk framing language"),
+        (ehr_log.eval("arm_number == 6"), "Open encounter alert, simplified language"),
+        (ehr_log.eval("arm_number == 7"), "Open encounter alter, alternative risk framing language"),
+        (ehr_log.eval("arm_number == 8"), "Open encounter alert"),
+        (ehr_log.eval("arm_number == 9"), "Order entry alert, simplified language, message sent 2 days before visit, alternative risk framing language"),
+        (ehr_log.eval("arm_number == 10"), "Order entry alert, simplified language, message sent 2 days before visit"),
+        (ehr_log.eval("arm_number == 11"), "Order entry alert, message sent 2 days before visit, alternative risk framing language"),
+        (ehr_log.eval("arm_number == 12"), "Order entry alert, message sent 2 days before visit"),
+        (ehr_log.eval("arm_number == 13"), "Order entry alert, simplified language, alternative risk framing language"),
+        (ehr_log.eval("arm_number == 14"), "Order entry alert, simplified language"),
+        (ehr_log.eval("arm_number == 15"), "Order entry alert, alternative risk framing language"),
+        (ehr_log.eval("arm_number == 16"), "Control (no factor assignment")
+        ])
+    
     # Writes CSV for RA to send text messages.
-    sms_history_dataframe.to_csv(fp, index=False)
+    ehr_log.to_csv(fp, index=False)
+    return(ehr_log)
 
 def run_ranking(pcp, pcp_unique, client):
     """Send rank calls to Personalizer and update corresponding patient variables.
@@ -51,6 +91,9 @@ def run_ranking(pcp, pcp_unique, client):
     except:
         week_count = 0
     
+    # Creating and empty dataframe and filling it is memory inefficient
+    # Creating a list, filling it, then converting to a dataframe is better:
+    # https://stackoverflow.com/questions/13784192/creating-an-empty-pandas-dataframe-and-then-filling-it
     ranking_log = [pcp, (week_count)]
     ehr_log = [pcp, (week_count)]
     
@@ -63,9 +106,13 @@ def run_ranking(pcp, pcp_unique, client):
     OpenEnc_response = client.rank(rank_request=OpenEnc_rank_request)
     OpenEnc_ranked = OpenEnc_response.reward_action_id
     
+    ranking_log.append(OpenEnc_ranked)
     ranking_log.append(sorted(OpenEnc_response.as_dict()['ranking'], key=lambda i: i["id"])[0]['probability'])
     ranking_log.append(sorted(OpenEnc_response.as_dict()['ranking'], key=lambda i: i["id"])[1]['probability'])
-        
+    
+    print(OpenEnc_ranked)
+    print(sorted(OpenEnc_response.as_dict()['ranking'], key=lambda i: i["id"]))
+    
     if OpenEnc_ranked == "yesOpenEnc":
         ehr_log.append(1)
     else:
@@ -80,9 +127,13 @@ def run_ranking(pcp, pcp_unique, client):
     Simplification_response = client.rank(rank_request=Simplification_rank_request)
     Simplification_ranked = Simplification_response.reward_action_id
     
+    ranking_log.append(Simplification_ranked)
     ranking_log.append(sorted(Simplification_response.as_dict()['ranking'], key=lambda i: i["id"])[0]['probability'])
     ranking_log.append(sorted(Simplification_response.as_dict()['ranking'], key=lambda i: i["id"])[1]['probability'])
-        
+    
+    print(Simplification_ranked)
+    print(sorted(Simplification_response.as_dict()['ranking'], key=lambda i: i["id"]))
+    
     if Simplification_ranked == "yesSimplification":
         ehr_log.append(1)
     else:
@@ -97,9 +148,13 @@ def run_ranking(pcp, pcp_unique, client):
     ColdState_response = client.rank(rank_request=ColdState_rank_request)
     ColdState_ranked = ColdState_response.reward_action_id
     
+    ranking_log.append(ColdState_ranked)
     ranking_log.append(sorted(ColdState_response.as_dict()['ranking'], key=lambda i: i["id"])[0]['probability'])
     ranking_log.append(sorted(ColdState_response.as_dict()['ranking'], key=lambda i: i["id"])[1]['probability'])
-        
+    
+    print(ColdState_ranked)
+    print(sorted(ColdState_response.as_dict()['ranking'], key=lambda i: i["id"]))
+    
     if ColdState_ranked == "yesColdState":
         ehr_log.append(1)
     else:
@@ -114,9 +169,13 @@ def run_ranking(pcp, pcp_unique, client):
     RiskFraming_response = client.rank(rank_request=RiskFraming_rank_request)
     RiskFraming_ranked = RiskFraming_response.reward_action_id
     
+    ranking_log.append(RiskFraming_ranked)
     ranking_log.append(sorted(RiskFraming_response.as_dict()['ranking'], key=lambda i: i["id"])[0]['probability'])
     ranking_log.append(sorted(RiskFraming_response.as_dict()['ranking'], key=lambda i: i["id"])[1]['probability'])
-        
+    
+    print(RiskFraming_ranked)
+    print(sorted(RiskFraming_response.as_dict()['ranking'], key=lambda i: i["id"]))
+    
     if RiskFraming_ranked == "yesRiskFrame":
         ehr_log.append(1)
     else:
