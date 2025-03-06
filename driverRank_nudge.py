@@ -7,15 +7,28 @@ from Actions_nudge import get_OpenEnc_actions, get_Simplification_actions, get_C
 from datetime import datetime, date, timedelta
 import sys
 import os
+import copy
 import numpy as np
 import pandas as pd
 
 from itertools import groupby
 from exe_functions import build_path
 
-def update_weekly_vars(run_time):
-    print("greg")
-    return(greg)
+def update_weekly_vars(pcp_dict, ranking_log, run_time):
+    fp = build_path(os.path.abspath(os.curdir) + ("\\000_Past_Factor_Assigment"), str(run_time.date()) + "_past_factor_assignment.csv")
+    if pcp_dict['pcp'][[column for column in pcp_dict['pcp'].columns if column.startswith('nb') or column.endswith('id')]]==1:
+        week_update = pcp_dict['pcp'][[column for column in pcp_dict['pcp'].columns if column.startswith('nb') or column.endswith('id')]].assign(nb_weeks_since_encounter=0, nb_weeks_since_coldstate=0, nb_weeks_since_simplification = 0, nb_weeks_since_riskframing = 0)
+    else:
+        week_update = pcp_dict['pcp'][[column for column in pcp_dict['pcp'].columns if column.startswith('nb') or column.endswith('id')]]
+        week_update = pd.merge(week_update,ranking_log, on=["study_id"])
+        #pd.merge(,, how="left", on=["study_id"])
+        week_update['nb_weeks_since_encounter'] = week_update.apply(lambda X: 0 if X.response_action_id_OpenEnc == 'yesOpenEnc' else X.nb_weeks_since_encounter + 1, axis=1)
+        week_update['nb_weeks_since_coldstate'] = week_update.apply(lambda X: 0 if X.response_action_id_ColdState == 'yesColdState' else X.nb_weeks_since_coldstate + 1, axis=1)
+        week_update['nb_weeks_since_simplification'] = week_update.apply(lambda X: 0 if X.response_action_id_Simplification == 'yesSimplification' else X.nb_weeks_since_simplification + 1, axis=1)
+        week_update['nb_weeks_since_riskframing'] = week_update.apply(lambda X: 0 if X.response_action_id_RiskFrame == 'yesRiskFrame' else X.nb_weeks_since_riskframing + 1, axis=1)
+        week_update = week_update[[column for column in pcp_dict['pcp'].columns if column.startswith('nb') or column.endswith('id')]]
+        week_update.to_csv(fp, index=False)
+    return None
 
 def generate_rank_log(ranking_log, run_time):
     fp = build_path(os.path.abspath(os.curdir) + ("\\000_RankData"), str(run_time.date()) + "_rank_log.csv")

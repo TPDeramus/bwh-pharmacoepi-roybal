@@ -129,11 +129,11 @@ for pcp in pcp_dict['pcp']['study_id'].unique():
 #         ranking_log = ranking_log.append(pt_rank_log)
 
 print("---------------------------------EXPORT RANK LOG FILE-----------------------------")
-generate_rank_log(ranking_log, run_time)
+ranking_log = generate_rank_log(ranking_log, run_time)
 # ## Output SMS and Patient Data
 
 print("---------------------------------EXPORT EHR FILE----------------------------------")
-write_ehr_history(ehr_log, run_time)
+ehr_log = write_ehr_history(ehr_log, run_time)
 # ranked_pt_data.to_csv(
 #     build_path(os.path.abspath(os.curdir) + ("\\000_PatientData"), str(run_time.date()) + "_pt_data.csv"), 
 #     index=False
