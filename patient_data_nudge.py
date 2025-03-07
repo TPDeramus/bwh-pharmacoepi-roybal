@@ -11,7 +11,7 @@ import re
 from exe_functions_nudge import search_directory, relative_date
 
 def import_pt_info(run_time):
-    if len(glob.glob(os.path.abspath(os.curdir) + ("\\000_Past_Factor_Assigment\\*.csv"))) == 0:
+    if len(glob.glob(os.path.abspath(os.curdir) + ("\\000_Past_Factor_Assignment\\*.csv"))) == 0:
         first_day = input("\nNo previous reward data detected.\n"
                           + "Is today the trial initiation?\n" 
                           + "If today is the first day, type 'yes' then hit Enter.\n"

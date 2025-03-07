@@ -51,7 +51,7 @@ run_time = pytz.timezone("America/New_York").localize(run_time)
 # 5 - Saturday
 # 6 - Sunday
 
-print("creating loglist and weekwindow")
+print("Checking log list for redundancy....")
 # Generates a list of *.txt files in the \\_ProgramLog folder
 loglist = glob.glob(os.path.abspath(os.curdir) + ("\\_ProgramLog\\*")+".txt")
 
@@ -68,9 +68,8 @@ if any(logfile in loglist for logfile in week_window):
 else:
     fp = build_path(os.path.abspath(os.curdir) + ("\\_ProgramLog"), str(run_time.date()) + "_RL_Personalizer_log.txt")
 
-
 ## 3. Check for certain files and load patient data or terminate program accordingly
-print("--------------------IMPORT NUDGE PCP AND PARTICIPANT DATA---------------------------")
+print(("IMPORT NUDGE PCP AND PARTICIPANT DATA").center(100,"-"))
 # try:
 pcp_dict = import_pt_info(run_time)
 # except FileNotFoundError:
@@ -85,11 +84,13 @@ pcp_dict = import_pt_info(run_time)
 
 ## 3. Start main body of program
 
-print("-----------------------------BEGIN PROGRAM------------------------------------------")
+print(("BEGIN PROGRAM").center(100,"-"))
+
 print(str(run_time))
 
 ## Set Up MS Azure Personalizer Client
-print("------------------------CREATE PERSONALIZER CLIENT----------------------------------")
+print(("CREATE PERSONALIZER CLIENT").center(100,"-"))
+
 with open(build_path(os.path.abspath(os.curdir) + ("\\.keys"), "azure-personalizer-key.txt"), 'r') as f:
      personalizer_key = f.read().rstrip()
 client = PersonalizerClient(
@@ -97,7 +98,10 @@ client = PersonalizerClient(
     CognitiveServicesCredentials(personalizer_key)
 )
 
-print("--------------------CHECKING FOR AVAILABLE REWARD DATA------------------------------")
+
+print(("CHECKING FOR AVAILABLE REWARD DATA").center(100,"-"))
+
+
 if pcp_dict['reward'] == True:
     pcp_dict = import_pt_outcomes(pcp_dict,run_time)
     pcp_dict = get_reward_updates(pcp_dict, run_time)
@@ -112,7 +116,9 @@ else:
 #ranking_log = new_empty_rank_log(run_time)
 
 
-print("---------------------------RANKING PCPS---------------------------------------------")
+print(("RANKING PCPS").center(100,"-"))
+
+
 ranking_log = []
 ehr_log = []
 for pcp in pcp_dict['pcp']['study_id'].unique():
@@ -132,26 +138,26 @@ for pcp in pcp_dict['pcp']['study_id'].unique():
 #         ranked_pt_data = ranked_pt_data.append(patient)
 #         ranking_log = ranking_log.append(pt_rank_log)
 
-print("---------------------------------EXPORT RANK LOG FILE-----------------------------")
+print(("EXPORT RANK LOG FILE").center(100,"-"))
 ranking_log = generate_rank_log(ranking_log, run_time)
 # ## Output SMS and Patient Data
 
-print("---------------------------------EXPORT EHR FILE----------------------------------")
+print(("EXPORT EHR FILE").center(100,"-"))
 ehr_log = write_ehr_history(ehr_log, run_time)
 # ranked_pt_data.to_csv(
 #     build_path(os.path.abspath(os.curdir) + ("\\000_PatientData"), str(run_time.date()) + "_pt_data.csv"), 
 #     index=False
 # )
 
-print("----------------------------UPDATING WEEKLY METRICS-------------------------------")
+print(("UPDATING WEEKLY METRICS").center(100,"-"))
 update_weekly_vars(pcp_dict, ranking_log, run_time)
 
+print(("-").center(100,"-"))
+# log_file.close()
+# sys.stdout = old_stdout
 
-print("-----------------------------------------------------------------------------------")
-log_file.close()
-sys.stdout = old_stdout
+print(("PROGRAM SUCCESSFULLY RAN").center(100,"-"))
 
-print("---------------------------------PROGRAM SUCCESSFULLY RAN--------------------------")
 input("SUCCESSFULLY RAN TODAY: {} \n".format(run_time.strftime("%B %d, %Y"))
         + "Now, send EHR messages to providers from os.path.abspath " +
         (os.curdir) + ("\\000_Factor_Assignment\\") + str(run_time.date()) + "_factor_assignment.csv" +
