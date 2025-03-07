@@ -78,9 +78,9 @@ pcp_dict = import_pt_info(run_time)
 #This is causing the hang
 # 3. Start log for program
 
-# old_stdout = sys.stdout        
-# log_file = open(fp, "w")
-# sys.stdout = log_file
+old_stdout = sys.stdout        
+log_file = open(fp, "w")
+sys.stdout = log_file
 
 ## 3. Start main body of program
 
@@ -103,11 +103,13 @@ print(("CHECKING FOR AVAILABLE REWARD DATA").center(100,"-"))
 
 
 if pcp_dict['reward'] == True:
+    print(("PREVIOUS DATA FOUND, UPDATING").center(100,"-"))
     reward_bool = True
     pcp_dict = import_pt_outcomes(pcp_dict,run_time)
     pcp_dict = get_reward_updates(pcp_dict, run_time)
     send_rewards(pcp_dict, client)
 else:
+    print(("NO PREVIOUS DATA FOUND").center(100,"-"))
     pcp_dict.pop('reward', None)
     reward_bool = False
 
@@ -129,7 +131,7 @@ for pcp in pcp_dict['pcp']['study_id'].unique():
         #print(pcp)
         pcp_unique[key]=pcp_unique[key][pcp_unique[key].study_id.isin([pcp])]
         #print(pcp_unique)
-    pcp_rank_log, pcp_ehr_log = run_ranking(pcp, pcp_unique, client, reward_bool)
+    pcp_rank_log, pcp_ehr_log = run_ranking(pcp, pcp_unique, client)
     #pcp_rank_log, pcp_ehr_log = run_ranking(pcp, pcp_unique, client, run_time)
     ranking_log.append(pcp_rank_log)
     ehr_log.append(pcp_ehr_log)
@@ -155,8 +157,8 @@ print(("UPDATING WEEKLY METRICS").center(100,"-"))
 update_weekly_vars(pcp_dict, ranking_log, run_time)
 
 print(("-").center(100,"-"))
-# log_file.close()
-# sys.stdout = old_stdout
+log_file.close()
+sys.stdout = old_stdout
 
 print(("PROGRAM SUCCESSFULLY RAN").center(100,"-"))
 

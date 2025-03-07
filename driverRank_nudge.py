@@ -84,7 +84,7 @@ def write_ehr_history(ehr_log, run_time):
     ehr_log.to_csv(fp, index=False)
     return(ehr_log)
 
-def run_ranking(pcp, pcp_unique, client, reward_bool):
+def run_ranking(pcp, pcp_unique, client):
     """Send rank calls to Personalizer and update corresponding patient variables.
 
     1. Shift rank ids
@@ -282,7 +282,7 @@ def shift_t0_t1_rank_ids(patient):
 #     pcpcontext = [pcpcontext]
 #     return pcpcontext
 
-def get_context(pcp,pcp_unique,reward_bool):
+def get_context(pcp, pcp_unique):
     pcp_out = dict(enumerate(pcp_unique['pcp'][pcp_unique['pcp'].study_id.isin([pcp])].drop(columns='study_id').to_dict('records')))
     pcp_out['pcp'] = pcp_out.pop(0)
     pcp_out['patients'] = {}
@@ -294,7 +294,7 @@ def get_context(pcp,pcp_unique,reward_bool):
         patout[patid] = patout.pop(0)
         pcp_out['patients'].update(patout)
     
-    if reward_bool == True:
+    if 'reward' in pcp_unique:
         patout = dict(enumerate(pcp_unique['reward'][pcp_unique['reward'].study_id.isin([pcp])][[column for column in pcp_unique['reward'].columns if column.startswith('nb')]].to_dict('records')))
         patout['weekly_reward_info'] = patout.pop(0)
         pcp_out.update(patout)
