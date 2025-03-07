@@ -103,11 +103,13 @@ print(("CHECKING FOR AVAILABLE REWARD DATA").center(100,"-"))
 
 
 if pcp_dict['reward'] == True:
+    reward_bool = True
     pcp_dict = import_pt_outcomes(pcp_dict,run_time)
     pcp_dict = get_reward_updates(pcp_dict, run_time)
     send_rewards(pcp_dict, client)
 else:
     pcp_dict.pop('reward', None)
+    reward_bool = False
 
 ## Rank Step
 # Call Personalizer to rank action features to find the correct EHR message to send today.
