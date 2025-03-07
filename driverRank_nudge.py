@@ -21,7 +21,6 @@ def update_weekly_vars(pcp_dict, ranking_log, run_time):
     else:
         week_update = pcp_dict['pcp'][[column for column in pcp_dict['pcp'].columns if column.startswith('nb') or column.endswith('id')]]
         week_update = pd.merge(week_update,ranking_log, on=["study_id"])
-        #pd.merge(,, how="left", on=["study_id"])
         week_update['nb_weeks_since_encounter'] = week_update.apply(lambda X: 0 if X.response_action_id_OpenEnc == 'yesOpenEnc' else X.nb_weeks_since_encounter + 1, axis=1)
         week_update['nb_weeks_since_coldstate'] = week_update.apply(lambda X: 0 if X.response_action_id_ColdState == 'yesColdState' else X.nb_weeks_since_coldstate + 1, axis=1)
         week_update['nb_weeks_since_simplification'] = week_update.apply(lambda X: 0 if X.response_action_id_Simplification == 'yesSimplification' else X.nb_weeks_since_simplification + 1, axis=1)
@@ -37,7 +36,7 @@ def generate_rank_log(ranking_log, run_time):
     return(ranking_log)
 
 def write_ehr_history(ehr_log, run_time):
-    fp = build_path(os.path.abspath(os.curdir) + ("\\000_Factor_Assignment"), str(run_time.date()) + "_ehr_message_log.csv")
+    fp = build_path(os.path.abspath(os.curdir) + ("\\000_Factor_Assignment"), str(run_time.date()) + "_factor_assignment.csv")
     ehr_log = pd.DataFrame(ehr_log[0:],columns=['study_id', 'weekly_counter', 'openencounter_yn', 'simplification_yn', 'coldstate_yn', 'riskframing_yn'])
     conditions = [
         (ehr_log["openencounter_yn"].eq(1) & ehr_log["simplification_yn"].eq(1) & ehr_log["coldstate_yn"].eq(1) & ehr_log["riskframing_yn"].eq(1)),
@@ -81,7 +80,7 @@ def write_ehr_history(ehr_log, run_time):
         (ehr_log.eval("arm_number == 16"), "Control (no factor assignment")
         ])
     
-    # Writes CSV for RA to send text messages.
+    # Writes CSV for RA to send ehr messages.
     ehr_log.to_csv(fp, index=False)
     return(ehr_log)
 
@@ -123,9 +122,6 @@ def run_ranking(pcp, pcp_unique, client):
     ranking_log.append(sorted(OpenEnc_response.as_dict()['ranking'], key=lambda i: i["id"])[0]['probability'])
     ranking_log.append(sorted(OpenEnc_response.as_dict()['ranking'], key=lambda i: i["id"])[1]['probability'])
     
-    print(OpenEnc_ranked)
-    print(sorted(OpenEnc_response.as_dict()['ranking'], key=lambda i: i["id"]))
-    
     if OpenEnc_ranked == "yesOpenEnc":
         ehr_log.append(1)
     else:
@@ -143,9 +139,6 @@ def run_ranking(pcp, pcp_unique, client):
     ranking_log.append(Simplification_ranked)
     ranking_log.append(sorted(Simplification_response.as_dict()['ranking'], key=lambda i: i["id"])[0]['probability'])
     ranking_log.append(sorted(Simplification_response.as_dict()['ranking'], key=lambda i: i["id"])[1]['probability'])
-    
-    print(Simplification_ranked)
-    print(sorted(Simplification_response.as_dict()['ranking'], key=lambda i: i["id"]))
     
     if Simplification_ranked == "yesSimplification":
         ehr_log.append(1)
@@ -165,9 +158,6 @@ def run_ranking(pcp, pcp_unique, client):
     ranking_log.append(sorted(ColdState_response.as_dict()['ranking'], key=lambda i: i["id"])[0]['probability'])
     ranking_log.append(sorted(ColdState_response.as_dict()['ranking'], key=lambda i: i["id"])[1]['probability'])
     
-    print(ColdState_ranked)
-    print(sorted(ColdState_response.as_dict()['ranking'], key=lambda i: i["id"]))
-    
     if ColdState_ranked == "yesColdState":
         ehr_log.append(1)
     else:
@@ -186,19 +176,10 @@ def run_ranking(pcp, pcp_unique, client):
     ranking_log.append(sorted(RiskFraming_response.as_dict()['ranking'], key=lambda i: i["id"])[0]['probability'])
     ranking_log.append(sorted(RiskFraming_response.as_dict()['ranking'], key=lambda i: i["id"])[1]['probability'])
     
-    print(RiskFraming_ranked)
-    print(sorted(RiskFraming_response.as_dict()['ranking'], key=lambda i: i["id"]))
-    
     if RiskFraming_ranked == "yesRiskFrame":
         ehr_log.append(1)
     else:
         ehr_log.append(0)
-
-    #print(pt_rank_log)
-
-    #patient = update_num_day_sms(patient)
-    #patient = updated_sms_today(patient)
-    #patient["trial_day_counter"] += 1
     return ranking_log, ehr_log
 
 
@@ -220,227 +201,6 @@ def shift_t0_t1_rank_ids(patient):
     patient["rank_id_content_t0"] = None
     patient["rank_id_reflective_t0"] = None
     return patient
-
-
-def update_framing_ranking(patient, response_action_id_framing):
-    patient["response_action_id_framing"] = response_action_id_framing
-    if patient["response_action_id_framing"] == "posFrame":
-        patient["framing_sms"] = 1
-    elif patient["response_action_id_framing"] == "negFrame":
-        patient["framing_sms"] = 2
-    elif patient["response_action_id_framing"] == "neutFrame":
-        patient["framing_sms"] = 0
-    return patient
-
-def update_history_ranking(patient, response_action_id_history):
-    patient["response_action_id_history"] = response_action_id_history
-    if patient["response_action_id_history"] == "yesHistory":
-        patient["history_sms"] = 1
-    elif patient["response_action_id_history"] == "noHistory":
-        patient["history_sms"] = 0
-    return patient
-
-def update_social_ranking(patient, response_action_id_social):
-    patient["response_action_id_social"] = response_action_id_social
-    if patient["response_action_id_social"] == "yesSocial":
-        patient["social_sms"] = 1
-    elif patient["response_action_id_social"] == "noSocial":
-        patient["social_sms"] = 0
-    return patient
-
-def update_content_ranking(patient, response_action_id_content):
-    patient["response_action_id_content"] = response_action_id_content
-    if patient["response_action_id_content"] == "yesContent":
-        patient["content_sms"] = 1
-    elif patient["response_action_id_content"] == "noContent":
-        patient["content_sms"] = 0
-    return patient
-
-def update_reflective_ranking(patient, response_action_id_reflective):
-    patient["response_action_id_reflective"] = response_action_id_reflective
-    if patient["response_action_id_reflective"] == "yesReflective":
-        patient["reflective_sms"] = 1
-    elif patient["response_action_id_reflective"] == "noReflective":
-        patient["reflective_sms"] = 0
-    return patient
-
-def update_num_day_sms(patient):
-    if patient["response_action_id_framing"] == "posFrame":
-        patient["num_day_since_pos_framing"] = 0
-        patient["num_day_since_neg_framing"] += 1
-        patient["num_day_since_no_sms"] = 0
-    elif patient["response_action_id_framing"] == "negFrame":
-        patient["num_day_since_neg_framing"] = 0
-        patient["num_day_since_pos_framing"] += 1
-        patient["num_day_since_no_sms"] = 0
-    elif patient["response_action_id_framing"] == "neutFrame":
-        patient["num_day_since_neg_framing"] += 1
-        patient["num_day_since_pos_framing"] += 1
-
-    if patient["response_action_id_history"] == "yesHistory":
-        patient["num_day_since_history"] = 0
-        patient["num_day_since_no_sms"] = 0
-    elif patient["response_action_id_history"] == "noHistory":
-        patient["num_day_since_history"] += 1
-
-    if patient["response_action_id_social"] == "yesSocial":
-        patient["num_day_since_social"] = 0
-        patient["num_day_since_no_sms"] = 0
-    elif patient["response_action_id_social"] == "noSocial":
-        patient["num_day_since_social"] += 1
-
-    if patient["response_action_id_content"] == "yesContent":
-        patient["num_day_since_content"] = 0
-        patient["num_day_since_no_sms"] = 0
-    elif patient["response_action_id_content"] == "noContent":
-        patient["num_day_since_content"] += 1
-
-    if patient["response_action_id_reflective"] == "yesReflective":
-        patient["num_day_since_reflective"] = 0
-        patient["num_day_since_no_sms"] = 0
-    elif patient["response_action_id_reflective"] == "noReflective":
-        patient["num_day_since_reflective"] += 1
-
-    if patient["response_action_id_framing"] == "neutFrame":
-        if patient["response_action_id_history"] == "noHistory" and patient["response_action_id_social"] == "noSocial" and patient["response_action_id_content"] == "noContent" and patient["response_action_id_reflective"] == "noReflective":
-            patient["num_day_since_no_sms"] += 1
-    
-    return patient
-
-# Computes and updates the SMS text message to send to this patient today.
-def updated_sms_today(patient):
-    fp = build_path(os.path.abspath(os.curdir) + ("\\_SMSChoices"), "sms_choices.csv")
-    sms_choices = pd.read_csv(fp)
-    framing = patient["framing_sms"]
-    history = patient["history_sms"]
-    social = patient["social_sms"]
-    content = patient["content_sms"]
-    reflective = patient["reflective_sms"]
-    print("records_id: ", patient["record_id"]," rankresult: ", framing, history, social, content, reflective)
-
-    rows = sms_choices[sms_choices['framing_sms'] == framing]
-    rows = rows[rows['history_sms'] == history]
-    rows = rows[rows['social_sms'] == social]
-    rows = rows[rows['content_sms'] == content]
-    rows = rows[rows['reflective_sms'] == reflective]
-
-  
-    # If 0,0,0,0,0 is found, then the rows will be None, so our defaults are first, the empty text message
-    text_number = 0
-    factor_set = 0
-    text = ""
-    text_message = ""
-    quantitative_sms = 0
-    doctor_sms = 0
-    lifestyle_sms = 0
-    
-    # If 0,0,0,0,0 is not found, then the rows will have some potential values,
-    if not rows.empty:
-        # Then we randomize what of the factor set text messages we will send
-        row = rows.sample()
-        # We record the factor_set and text_number as unique identifiers for this message
-        factor_set = row['factor_set'].item()
-        text_number = row['text_number'].item()
-        quantitative_sms = row['quantitative_sms'].item()
-        doctor_sms = row['doctor_sms'].item()
-        lifestyle_sms = row['lifestyle_sms'].item()
-
-        text_message = row['text_message'].item()
-        # We store the text message that will be sent for this specific patient that takes into account the history of their adherence
-        # This finds and replaces the "X" in the sms_choices text_message rows to customize to the patient.
-        text = row['text_message'].item().replace("X", str(patient["total_dichot_adherence_past7"]))
-
-    # We've updated the local variables and now store into the patient object as attributes to be exported in bulk by another function
-    patient["text_number"] = text_number
-    patient["factor_set"] = factor_set
-    patient["text_message"] = text_message
-    patient["quantitative_sms"] = quantitative_sms
-    patient["doctor_sms"] = doctor_sms
-    patient["lifestyle_sms"] = lifestyle_sms
-    patient["sms_msg_today"] = text
-    return patient
-
-# def get_demographics_features(patient):
-#     demographic_features = {"age": patient["age"],
-#                             "sex": patient["sex"],
-#                             "race_white": patient["race_white"],
-#                             "race_black": patient["race_black"],
-#                             "race_asian": patient["race_asian"],
-#                             "race_hispanic": patient["race_hispanic"],
-#                             "race_other": patient["race_other"],
-#                             "education_level": patient["edu_level"],
-#                             "employment_status": patient["employment_status"],
-#                             "marital_status": patient["marital_status"]}
-#     demographic_features_dict = {"demographic_features": demographic_features}
-#     return demographic_features_dict
-
-
-# def get_clinical_features(patient):
-#     clinical_features = {"num_physicians": patient["num_physicians"],
-#                          "num_years_dm_rx": patient["num_years_dm_rx"],
-#                          "hba1c": patient["hba1c"]}
-#     clinical_features_dict = {"clinical_features": clinical_features}
-#     return clinical_features_dict
-
-
-# def get_motivational_features(patient):
-#     motivational_features = {"automaticity": patient["automaticity"],
-#                              "pt_activation": patient["pt_activation"],
-#                              "reason_dm_rx": patient["reason_dm_rx"]}
-#     motivational_features_dict = {"motivational_features": motivational_features}
-#     return motivational_features_dict
-
-
-# def get_rx_use_features(patient):
-#     rx_use = {"num_rx": patient["num_rx"],
-#               "concomitant_insulin_use": patient["concomitant_insulin_use"],
-#               "non_adherence": patient["non_adherence"]}
-#     rx_use_dict = {"rx_use": rx_use}
-#     return rx_use_dict
-
-
-# def get_pillsy_med_features(patient):
-#     pillsy_med_features = {"num_twice_daily_pillsy_meds": patient["num_twice_daily_pillsy_meds"],
-#                            "pillsy_meds_agi": patient["pillsy_meds_agi"],
-#                            "pillsy_meds_dpp4": patient["pillsy_meds_dpp4"],
-#                            "pillsy_meds_glp1": patient["pillsy_meds_glp1"],
-#                            "pillsy_meds_meglitinide": patient["pillsy_meds_meglitinide"],
-#                            "pillsy_meds_metformin": patient["pillsy_meds_metformin"],
-#                            "pillsy_meds_sglt2": patient["pillsy_meds_sglt2"],
-#                            "pillsy_meds_sulfonylurea": patient["pillsy_meds_sulfonylurea"],
-#                            "pillsy_meds_thiazolidinedione": patient["pillsy_meds_thiazolidinedione"],
-#                            "num_pillsy_meds": patient["num_pillsy_meds_t0"]}
-#     pillsy_med_features_dict = {"pillsy_med_features": pillsy_med_features}
-#     return pillsy_med_features_dict
-
-
-# def get_observed_feedback_features(patient):
-#     observed_feedback_features = {}
-#     if patient["disconnectedness"] != None and patient["trial_day_counter"] >= 1:
-#         observed_feedback_features["disconnectedness"] = patient["disconnectedness"]
-#     if patient["early_rx_use"] != None and patient["trial_day_counter"] >= 1:
-#         observed_feedback_features["early_rx_use"] = patient["early_rx_use"]
-#     if (patient["avg_adherence_1day"] != None) and patient["trial_day_counter"] >= 1:
-#         observed_feedback_features["avg_adherence_1day"] = patient["avg_adherence_1day"]
-#     if (patient["avg_adherence_3day"] != None) and patient["trial_day_counter"] >= 3:
-#         observed_feedback_features["avg_adherence_3day"] = patient["avg_adherence_3day"]
-#     if (patient["avg_adherence_7day"] != None) and patient["trial_day_counter"] >= 7:
-#         observed_feedback_features["avg_adherence_7day"] = patient["avg_adherence_7day"]
-#     observed_feedback_features_dict = {"observed_feedback_features": observed_feedback_features}
-#     return observed_feedback_features_dict
-
-
-
-def get_num_days_since_features(patient):
-    num_days_since_features = {"num_day_since_no_sms": patient["num_day_since_no_sms"],
-                               "num_day_since_pos_framing": patient["num_day_since_pos_framing"],
-                               "num_day_since_neg_framing": patient["num_day_since_neg_framing"],
-                               "num_day_since_history": patient["num_day_since_history"],
-                               "num_day_since_social": patient["num_day_since_social"],
-                               "num_day_since_content": patient["num_day_since_content"],
-                               "num_day_since_reflective": patient["num_day_since_reflective"]}
-    num_days_since_features_dict = {"num_days_since_features": num_days_since_features}
-    return num_days_since_features_dict
 
 
 # def get_context(pcp):

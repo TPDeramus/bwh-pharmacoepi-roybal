@@ -23,7 +23,7 @@ import re
 import glob
 import copy
 
-#from patient_data import import_pt_data, new_empty_pt_data
+
 from patient_data_nudge import import_pt_info, import_pt_outcomes
 from driverReward_nudge import get_reward_updates, send_rewards
 from driverRank_nudge import run_ranking, generate_rank_log, write_ehr_history, update_weekly_vars
@@ -32,6 +32,7 @@ from exe_functions_nudge import build_path, relative_date, remove_common, search
 
 ## 1. Get date
 
+print("getting runtime")
 ############# For real deal #############
 run_time = datetime.now()
 ## standard python date libraries do not work on Windows machines
@@ -50,6 +51,7 @@ run_time = pytz.timezone("America/New_York").localize(run_time)
 # 5 - Saturday
 # 6 - Sunday
 
+print("creating loglist and weekwindow")
 # Generates a list of *.txt files in the \\_ProgramLog folder
 loglist = glob.glob(os.path.abspath(os.curdir) + ("\\_ProgramLog\\*")+".txt")
 
@@ -62,12 +64,20 @@ if any(logfile in loglist for logfile in week_window):
     + "\nIt will now automatically stop to avoid sending redundant information to Personalizer"
     + "\nPlease contact those involved to confirm if you are seeing this message in error.\n"
     + "Press Enter to exit the program and close this window.")
+    sys.exit()
 else:
     fp = build_path(os.path.abspath(os.curdir) + ("\\_ProgramLog"), str(run_time.date()) + "_RL_Personalizer_log.txt")
 
 
-##This is causing the hang
-## 3. Start log for program
+## 3. Check for certain files and load patient data or terminate program accordingly
+print("--------------------IMPORT NUDGE PCP AND PARTICIPANT DATA---------------------------")
+# try:
+pcp_dict = import_pt_info(run_time)
+# except FileNotFoundError:
+#     print("Participant import failed. Check filenames and re-run.")
+
+#This is causing the hang
+# 3. Start log for program
 
 # old_stdout = sys.stdout        
 # log_file = open(fp, "w")
@@ -75,18 +85,11 @@ else:
 
 ## 3. Start main body of program
 
-print("-----------------------------BEGIN PROGRAM----------------------------")
+print("-----------------------------BEGIN PROGRAM------------------------------------------")
 print(str(run_time))
 
-## 3. Check for certain files and load patient data or terminate program accordingly
-print("--------------------IMPORT NUDGE PCP AND PARTICIPANT DATA-------------")
-# try:
-pcp_dict = import_pt_info(run_time)
-# except FileNotFoundError:
-#     print("Participant import failed. Check filenames and re-run.")
-
 ## Set Up MS Azure Personalizer Client
-print("------------------------CREATE PERSONALIZER CLIENT--------------------")
+print("------------------------CREATE PERSONALIZER CLIENT----------------------------------")
 with open(build_path(os.path.abspath(os.curdir) + ("\\.keys"), "azure-personalizer-key.txt"), 'r') as f:
      personalizer_key = f.read().rstrip()
 client = PersonalizerClient(
@@ -94,11 +97,13 @@ client = PersonalizerClient(
     CognitiveServicesCredentials(personalizer_key)
 )
 
-print("--------------------CHECKING FOR AVAILABLE REWARD DATA----------------")
+print("--------------------CHECKING FOR AVAILABLE REWARD DATA------------------------------")
 if pcp_dict['reward'] == True:
     pcp_dict = import_pt_outcomes(pcp_dict,run_time)
     pcp_dict = get_reward_updates(pcp_dict, run_time)
     send_rewards(pcp_dict, client)
+else:
+    pcp_dict.pop('reward', None)
 
 ## Rank Step
 # Call Personalizer to rank action features to find the correct EHR message to send today.
@@ -107,11 +112,10 @@ if pcp_dict['reward'] == True:
 #ranking_log = new_empty_rank_log(run_time)
 
 
-print("---------------------------RANKING PCPS-------------------------------")
+print("---------------------------RANKING PCPS---------------------------------------------")
 ranking_log = []
 ehr_log = []
 for pcp in pcp_dict['pcp']['study_id'].unique():
-    print(pcp)
     pcp_unique = copy.deepcopy(pcp_dict)
     for key in pcp_unique.keys():
         #print(pcp)
@@ -144,11 +148,12 @@ update_weekly_vars(pcp_dict, ranking_log, run_time)
 
 
 print("-----------------------------------------------------------------------------------")
-#log_file.close()
-#sys.stdout = old_stdout
+log_file.close()
+sys.stdout = old_stdout
 
 print("---------------------------------PROGRAM SUCCESSFULLY RAN--------------------------")
 input("SUCCESSFULLY RAN TODAY: {} \n".format(run_time.strftime("%B %d, %Y"))
-        + "Now, send messages to patients from /000_SMS_TO_SEND/" + str(run_time.date()) + "_sms_history.csv"
-        + "\nPress Enter to exit the program and close this window.")
+        + "Now, send EHR messages to providers from os.path.abspath " +
+        (os.curdir) + ("\\000_Factor_Assignment\\") + str(run_time.date()) + "_factor_assignment.csv" +
+        "\nPress Enter to exit the program and close this window.")
 sys.exit()
