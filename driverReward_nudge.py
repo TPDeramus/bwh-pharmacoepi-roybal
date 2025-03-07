@@ -18,6 +18,7 @@ import os
 from datetime import date
 import http.client, urllib.request, urllib.parse, urllib.error, base64
 
+from functools import reduce
 from exe_functions_nudge import search_directory, relative_date
 
 def get_reward_updates(pcp_dict, run_time):
@@ -42,24 +43,23 @@ def get_reward_updates(pcp_dict, run_time):
               "\nThis should have been prevented earlier in the workflow.\n"
               "\nTerminating......\n")
     else:
-        pcp_dict['reward'] = pd.read_csv(reward_outputs_list_current[-1])
         past_factor_fois_prior = [s + "*past*factor_assignment*.csv" for s in week_list_current]
         factor_outputs_list_prior = []
         for ext in past_factor_fois_prior:
             factor_outputs_list_prior.extend(search_directory(os.path.abspath(os.curdir), ext))
-        if len(factor_outputs_list_prior) == 0:
-            print("\nFactor assignments from previous week missing\n" +
+        rank_calls_fois_prior = [s + "*rank*log*.csv" for s in week_list_current]
+        prior_rank_calls_outputs_list = []
+        for ext in rank_calls_fois_prior:
+            prior_rank_calls_outputs_list.extend(search_directory(os.path.abspath(os.curdir), ext))
+        if len(factor_outputs_list_prior) == 0 or len(prior_rank_calls_outputs_list) == 0:
+            print("\nFactor assignments or log files from previous week missing\n" +
                   "\nTerminating......\n")
+            sys.exit()
         else:
-            pcp_dict['pcp'] = pd.merge(pcp_dict['pcp'],pd.read_csv(factor_outputs_list_prior[-1]), how="left", on=["study_id"])
-
-    # Subset updated_pt_dict to what we need for reward calls and put in dataframe
-    # create an Empty DataFrame object
-    
-    # column_values = ['reward', 'frame_id', 'history_id', 'social_id', 'content_id', 'reflective_id', 'record_id', 'trial_day_counter', 
-    #                  'flag_send_reward_value_tX']
-    # reward_updates = pd.DataFrame(columns=column_values)
-    
+            # Can't do a lambda merge due to the column missmatch
+            #reduce(lambda  left,right: pd.merge(left,right,on=['study_id',], how='outer'), [pd.read_csv(reward_outputs_list_current[-1]),pd.read_csv(factor_outputs_list_prior[-1]),pd.read_csv(prior_rank_calls_outputs_list[-1])]).fillna('void')
+            pcp_dict['reward'] = pd.merge(pd.merge(pd.read_csv(reward_outputs_list_current[-1]),pd.read_csv(prior_rank_calls_outputs_list[-1]), how="left", on=["study_id","weekly_counter"]),pd.read_csv(factor_outputs_list_prior[-1]), how="left", on=["study_id"])
+            #pd.merge(pcp_dict['reward'],pd.read_csv(factor_outputs_list_prior[-1]), how="left", on=["study_id"])
     
     # #Previous tested workflow
     #     reward_fois_prior = [s + "*reward*updates.csv" for s in week_list_current]
@@ -70,14 +70,28 @@ def get_reward_updates(pcp_dict, run_time):
     #     pcp_dict['reward'] = pd.read_csv(reward_output_list_prior[-1])
     #     pcp_dict['reward']['reward'] = np.where(pcp_dict['reward']['reward'] == False, np.nan, pcp_dict['reward']['reward'])
     
-    #Previous tested workflow
-        reward_fois_prior = [s + "*reward*updates.csv" for s in week_list_current]
-        reward_output_list_prior = []
-        for ext in reward_fois_prior:
-            reward_output_list_prior.extend(search_directory(os.path.abspath(os.curdir), ext))
+    ##Current Workflow
+        #reward_fois_prior = [s + "*reward*updates.csv" for s in week_list_current]
+        #reward_output_list_prior = []
+        #for ext in reward_fois_prior:
+        #    reward_output_list_prior.extend(search_directory(os.path.abspath(os.curdir), ext))
 
-        pcp_dict['reward'] = pd.read_csv(reward_output_list_prior[-1])
-        pcp_dict['reward']['reward'] = np.where(pcp_dict['reward']['flag_send_reward_value_tX'] == "flag_send_reward_value_t0", np.nan, pcp_dict['reward']['reward'])
+        #pcp_dict['reward'] = pd.read_csv(reward_output_list_prior[-1])
+        
+        
+        #reward_fois_prior = [s + "*rank*log.csv" for s in week_list_current]
+        #reward_output_list_prior = []
+        #for ext in reward_fois_prior:
+        #    reward_output_list_prior.extend(search_directory(os.path.abspath(os.curdir), ext))
+    
+        #pcp_dict['reward'] = pd.merge(pcp_dict['reward'], pd.read_csv(reward_output_list_prior[-1]), how="left", on=["study_id"])
+        
+            pcp_dict['reward']['reward'] = np.where(pcp_dict['reward']['flag_send_reward_value_tX'] == "flag_send_reward_value_t0", np.nan, pcp_dict['reward']['reward'])
+    
+        #reward_fois_prior = [s + "*rank*log.csv" for s in week_list_current]
+        #reward_output_list_prior = []
+        #for ext in reward_fois_prior:
+        #    reward_output_list_prior.extend(search_directory(os.path.abspath(os.curdir), ext))
     
     # for pt,data_row in pt_data.iterrows():
     #     # Reward value, Rank_Id's

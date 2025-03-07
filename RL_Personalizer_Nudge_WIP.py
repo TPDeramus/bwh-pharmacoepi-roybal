@@ -127,7 +127,7 @@ for pcp in pcp_dict['pcp']['study_id'].unique():
         #print(pcp)
         pcp_unique[key]=pcp_unique[key][pcp_unique[key].study_id.isin([pcp])]
         #print(pcp_unique)
-    pcp_rank_log, pcp_ehr_log = run_ranking(pcp, pcp_unique, client)
+    pcp_rank_log, pcp_ehr_log = run_ranking(pcp, pcp_unique, client, reward_bool)
     #pcp_rank_log, pcp_ehr_log = run_ranking(pcp, pcp_unique, client, run_time)
     ranking_log.append(pcp_rank_log)
     ehr_log.append(pcp_ehr_log)

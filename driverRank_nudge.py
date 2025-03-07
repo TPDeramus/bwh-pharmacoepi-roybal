@@ -15,7 +15,7 @@ from itertools import groupby
 from exe_functions import build_path
 
 def update_weekly_vars(pcp_dict, ranking_log, run_time):
-    fp = build_path(os.path.abspath(os.curdir) + ("\\000_Past_Factor_Assigment"), str(run_time.date()) + "_past_factor_assignment.csv")
+    fp = build_path(os.path.abspath(os.curdir) + ("\\000_Past_Factor_Assignment"), str(run_time.date()) + "_past_factor_assignment.csv")
     if pcp_dict['pcp'][[column for column in pcp_dict['pcp'].columns if column.startswith('nb') or column.endswith('id')]].shape[1]==1:
         week_update = pcp_dict['pcp'][[column for column in pcp_dict['pcp'].columns if column.startswith('nb') or column.endswith('id')]].assign(nb_weeks_since_encounter=0, nb_weeks_since_coldstate=0, nb_weeks_since_simplification = 0, nb_weeks_since_riskframing = 0)
     else:
@@ -84,7 +84,7 @@ def write_ehr_history(ehr_log, run_time):
     ehr_log.to_csv(fp, index=False)
     return(ehr_log)
 
-def run_ranking(pcp, pcp_unique, client):
+def run_ranking(pcp, pcp_unique, client, reward_bool):
     """Send rank calls to Personalizer and update corresponding patient variables.
 
     1. Shift rank ids
@@ -282,7 +282,7 @@ def shift_t0_t1_rank_ids(patient):
 #     pcpcontext = [pcpcontext]
 #     return pcpcontext
 
-def get_context(pcp,pcp_unique):
+def get_context(pcp,pcp_unique,reward_bool):
     pcp_out = dict(enumerate(pcp_unique['pcp'][pcp_unique['pcp'].study_id.isin([pcp])].drop(columns='study_id').to_dict('records')))
     pcp_out['pcp'] = pcp_out.pop(0)
     pcp_out['patients'] = {}
@@ -293,6 +293,25 @@ def get_context(pcp,pcp_unique):
         patout = dict(enumerate(patframe[patframe.pat_study_id.isin([patid])].drop(columns='pat_study_id').to_dict('records')))
         patout[patid] = patout.pop(0)
         pcp_out['patients'].update(patout)
+    
+    if reward_bool == True:
+        patout = dict(enumerate(pcp_unique['reward'][pcp_unique['reward'].study_id.isin([pcp])][[column for column in pcp_unique['reward'].columns if column.startswith('nb')]].to_dict('records')))
+        patout['weekly_reward_info'] = patout.pop(0)
+        pcp_out.update(patout)
+        patout = pcp_unique['reward'][pcp_unique['reward'].study_id.isin([pcp])][[column for column in pcp_unique['reward'].columns if 'response_action_id' in column]].to_dict('records')
+        patout = patout[0]
+        keypat = list(patout.keys())
+        keyval = list(patout.values())
+        for keys in keypat:
+            pcp_out[keys] = {}
+            #pcp_out['past_rewards'] = {}
+        for pairs in range(0,len(keypat)):
+            #key, value = next((str(k), str(v)) for k, v in patout[0].items())
+            #pout = {key: value}
+            pcp_out[keypat[pairs]] = keyval[pairs]
+            #pcp_out[key] = patout[0][key]
+            #print(pcp_unique)
+        
     context = [pcp_out]
     #Saving it as a dict instead of a list in order to call it for other information
     #Easily rectified but notable difference
