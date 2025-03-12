@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# imports individual libraries and tools installed in the virtual environment
 import sys
 import time
 import dateutil
@@ -23,7 +24,7 @@ import re
 import glob
 import copy
 
-
+# Imports the individual functions from `.py` files
 from patient_data_nudge import import_pt_info, import_pt_outcomes
 from driverReward_nudge import get_reward_updates, send_rewards
 from driverRank_nudge import run_ranking, generate_rank_log, write_ehr_history, update_weekly_vars
@@ -51,13 +52,14 @@ run_time = pytz.timezone("America/New_York").localize(run_time)
 # 5 - Saturday
 # 6 - Sunday
 
-print("Checking log list for redundancy....")
+print("Checking log list for redundancy....\n")
 # Generates a list of *.txt files in the \\_ProgramLog folder
 loglist = glob.glob(os.path.abspath(os.curdir) + ("\\_ProgramLog\\*")+".txt")
 
 # range is not an inclusive function so it has to be up to day 7 to include 0-6
 week_window = [build_path(os.path.abspath(os.curdir) + ("\\_ProgramLog"), str(d.date()) + "_RL_Personalizer_log.txt") for d in pd.date_range(relative_date(run_time, 0, 0), periods=7).to_pydatetime().tolist()]
 
+# checks to see if any of the logs in the _ProgramLog directory come from the dates in "week_window"
 if any(logfile in loglist for logfile in week_window):
     input("\nThe workflow seems to have been run already sometime between:\n" + [str(d.date()) for d in pd.date_range(relative_date(run_time, 0, 0), periods=7).to_pydatetime().tolist()][0]
     + "\nto:\n"+ [str(d.date()) for d in pd.date_range(relative_date(run_time, 0, 0), periods=7).to_pydatetime().tolist()][6]
@@ -69,27 +71,27 @@ else:
     fp = build_path(os.path.abspath(os.curdir) + ("\\_ProgramLog"), str(run_time.date()) + "_RL_Personalizer_log.txt")
 
 ## 3. Check for certain files and load patient data or terminate program accordingly
-print(("IMPORT NUDGE PCP AND PARTICIPANT DATA").center(100,"-"))
-# try:
+print(("IMPORT NUDGE PCP AND PARTICIPANT DATA").center(100,"-") + "\n")
+
+# This loads all the pcp and patient data as a dictionary full of dataframes
 pcp_dict = import_pt_info(run_time)
-# except FileNotFoundError:
-#     print("Participant import failed. Check filenames and re-run.")
 
-#This is causing the hang
-# 3. Start log for program
 
+# 4. Start log for program
+# Comment out the next 3 lines if you want to print to the terminal
+# Otherwise all output will go to the log file
 old_stdout = sys.stdout        
 log_file = open(fp, "w")
 sys.stdout = log_file
 
-## 3. Start main body of program
-
-print(("BEGIN PROGRAM").center(100,"-"))
+# 5. Start main body of program
+# This is where the log output starts
+print(("BEGIN PROGRAM").center(100,"-") + "\n")
 
 print(str(run_time))
 
-## Set Up MS Azure Personalizer Client
-print(("CREATE PERSONALIZER CLIENT").center(100,"-"))
+# 6. Set Up MS Azure Personalizer Client
+print(("CREATE PERSONALIZER CLIENT").center(100,"-") + "\n")
 
 with open(build_path(os.path.abspath(os.curdir) + ("\\.keys"), "azure-personalizer-key.txt"), 'r') as f:
      personalizer_key = f.read().rstrip()
@@ -98,29 +100,29 @@ client = PersonalizerClient(
     CognitiveServicesCredentials(personalizer_key)
 )
 
-
-print(("CHECKING FOR AVAILABLE REWARD DATA").center(100,"-"))
+# 7. We checked for the reward data in step 3, this is just loading it
+print(("CHECKING FOR AVAILABLE REWARD DATA").center(100,"-") + "\n")
 
 
 if pcp_dict['reward'] == True:
-    print(("PREVIOUS DATA FOUND, UPDATING").center(100,"-"))
+    print(("PREVIOUS DATA FOUND, UPDATING").center(100,"-") + "\n")
     reward_bool = True
     pcp_dict = import_pt_outcomes(pcp_dict,run_time)
     pcp_dict = get_reward_updates(pcp_dict, run_time)
     send_rewards(pcp_dict, client)
 else:
-    print(("NO PREVIOUS DATA FOUND").center(100,"-"))
+    print(("NO PREVIOUS DATA FOUND").center(100,"-") + "\n")
     pcp_dict.pop('reward', None)
     reward_bool = False
 
-## Rank Step
+# 8. Rank Step
 # Call Personalizer to rank action features to find the correct EHR message to send today.
 
-#ranked_pt_data = new_empty_pt_data()
-#ranking_log = new_empty_rank_log(run_time)
+print(("Data to be sent to personalizer:").center(100,"-") + "\n")
 
+print(pcp_dict)
 
-print(("RANKING PCPS").center(100,"-"))
+print(("RANKING PCPS").center(100,"-") + "\n")
 
 
 ranking_log = []
@@ -128,39 +130,31 @@ ehr_log = []
 for pcp in pcp_dict['pcp']['study_id'].unique():
     pcp_unique = copy.deepcopy(pcp_dict)
     for key in pcp_unique.keys():
-        #print(pcp)
+        print(pcp)
         pcp_unique[key]=pcp_unique[key][pcp_unique[key].study_id.isin([pcp])]
-        #print(pcp_unique)
+        print(pcp_unique)
     pcp_rank_log, pcp_ehr_log = run_ranking(pcp, pcp_unique, client)
-    #pcp_rank_log, pcp_ehr_log = run_ranking(pcp, pcp_unique, client, run_time)
     ranking_log.append(pcp_rank_log)
     ehr_log.append(pcp_ehr_log)
 
-# for index, patient in pt_data.iterrows():
-#     if patient["censor"] != 1 and pd.Timestamp(patient["censor_date"], tz='US/Eastern') > run_time:
-#         patient, pt_rank_log = run_ranking(patient, client, run_time)
-#         ranked_pt_data = ranked_pt_data.append(patient)
-#         ranking_log = ranking_log.append(pt_rank_log)
-
-print(("EXPORT RANK LOG FILE").center(100,"-"))
+print(("EXPORT RANK LOG FILE").center(100,"-") + "\n")
 ranking_log = generate_rank_log(ranking_log, run_time)
-# ## Output SMS and Patient Data
 
-print(("EXPORT EHR FILE").center(100,"-"))
+# 9. Output EHR and Patient Data
+print(ranking_log)
+
+print(("EXPORT EHR FILE").center(100,"-") + "\n")
 ehr_log = write_ehr_history(ehr_log, run_time)
-# ranked_pt_data.to_csv(
-#     build_path(os.path.abspath(os.curdir) + ("\\000_PatientData"), str(run_time.date()) + "_pt_data.csv"), 
-#     index=False
-# )
+print(ehr_log)
 
-print(("UPDATING WEEKLY METRICS").center(100,"-"))
+print(("UPDATING WEEKLY METRICS").center(100,"-") + "\n")
 update_weekly_vars(pcp_dict, ranking_log, run_time)
 
-print(("-").center(100,"-"))
+print(("-").center(100,"-") + "\n")
 log_file.close()
 sys.stdout = old_stdout
 
-print(("PROGRAM SUCCESSFULLY RAN").center(100,"-"))
+print(("PROGRAM SUCCESSFULLY RAN").center(100,"-") + "\n")
 
 input("SUCCESSFULLY RAN TODAY: {} \n".format(run_time.strftime("%B %d, %Y"))
         + "Now, send EHR messages to providers from os.path.abspath " +
