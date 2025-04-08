@@ -1,7 +1,7 @@
 import os
 import pandas as pd
+from functools import reduce
 from janitor import clean_names, remove_empty
-import pandas as pd
 from exe_functions import build_path
 from datetime import datetime, timedelta
 import sys
@@ -11,6 +11,19 @@ import re
 from exe_functions_nudge import search_directory, relative_date
 
 def import_pt_info(run_time):
+    pcp_static_files = glob.glob(os.path.abspath(os.curdir) + ("\\000_Static_PCP_Info\\*.csv"))
+    if(len(pcp_static_files) < 1):
+        print("\nNo static PCP information found!\n"+
+              "\nThis information is \033[1mREQUIRED\033[0m to launch the program.\n"+
+              "\nTerminating......\n")
+        sys.exit()
+    else:
+        li = []
+        for filename in pcp_static_files:
+            df = pd.read_csv(filename, index_col=None, header=0)
+            li.append(df)
+        pcp_static_data = pd.concat(li, axis=0, ignore_index=True)
+        pcp_static_data['study_id'] = pcp_static_data['study_id'].str.lower()
     if len(glob.glob(os.path.abspath(os.curdir) + ("\\000_Past_Factor_Assignment\\*.csv"))) == 0:
         first_day = input("\nNo previous reward data detected.\n"
                           + "Is today the trial initiation?\n" 
@@ -29,7 +42,7 @@ def import_pt_info(run_time):
                 start_date = input("\nNo start date identified, please type one below in the format YYYY-MM-DD.\n")
                 try:
                     start_date = str(datetime.strptime(start_date, "%Y-%m-%d").date())
-                    fois = [start_date + "*patient_info*.csv", start_date + "*pcp_info*.csv"]
+                    fois = [start_date + "*patient_info*.csv", start_date + "*pcp_info_weekly*.csv"]
                     files_list = []
                     for ext in fois:
                         files_list.extend(search_directory(os.path.abspath(os.curdir), ext))
@@ -40,12 +53,12 @@ def import_pt_info(run_time):
             sys.exit()
         #print(files_list)
         if len(files_list) < 2 or (not all(any(item in file for file in files_list) for item in ["000_Patient_Info","000_Static_PCP_Info"])):
-            print("\nNo Static_PCP_Info or Patient_Info needed for study initiation found!\n"+
+            print("\nNo starting PCP or Patient needed for study initiation found!\n"+
                   "\nTerminating......\n")
             #print(files_list)
             sys.exit()
         elif len(files_list) > 2:
-            print("\nMultiple Static_PCP_Info or Patient_Info found!\n"+
+            print("\nMultiple PCP or Patient files for study initiation found!\n"+
                   "\nPlease check the data for continuity at beginning of study.\n"+
                   "\nTerminating......\n")
             #print(files_list)
@@ -53,11 +66,14 @@ def import_pt_info(run_time):
         else:
             print("\nPopulating dict variable.....\n")
             pcp_dict = {}
-            print("\nReading in PCP data.....\n")
-            pcp_dict['pcp'] = pd.read_csv([s for s in files_list if "PCP" in s][0])
+            print("\nReading in weekly PCP data.....\n")
+            pcp_dynamic_data = pd.read_csv([s for s in files_list if "PCP" in s][0])
+            pcp_dynamic_data['study_id'] = pcp_dynamic_data['study_id'].str.lower()
+            pcp_dict['pcp'] = pd.merge(pcp_static_data, pcp_dynamic_data, on=['study_id'], how='inner')
             print("\nReading in Patient data.....\n")
             pcp_dict['patients'] = pd.read_csv([s for s in files_list if "Patient" in s][0])
             print("\nCleaning variable names with `janitor`.....\n")
+            
             for frames in list(pcp_dict.keys()):
                 pcp_dict[frames] = pcp_dict[frames].clean_names(axis='columns')
                 varlist = pcp_dict[frames].dtypes[pcp_dict[frames].dtypes != 'int64'][pcp_dict[frames].dtypes != 'float64'][pcp_dict[frames].dtypes !='datetime64[ns]'].index.tolist()
@@ -68,26 +84,34 @@ def import_pt_info(run_time):
             print("\nVariable cleaning complete.\n")
             pcp_dict['reward'] = False
     else:
-        week_list = [str(d.date()) for d in pd.date_range(relative_date(run_time-timedelta(7), 0, 0), periods=7).to_pydatetime().tolist()]
-        fois = [s + "*patient_info*.csv" for s in week_list] + [s + "*pcp_info*.csv" for s in week_list]
+        #week_list = [str(d.date()) for d in pd.date_range(relative_date(run_time-timedelta(7), 0, 0), periods=7).to_pydatetime().tolist()]
+        week_list = [str(d.date()) for d in pd.date_range(relative_date(run_time-timedelta(7), 4, 0), periods=11).to_pydatetime().tolist()]
+        fois = [s + "*patient_info*.csv" for s in week_list] + [s + "*pcp_info_weekly*.csv" for s in week_list]
         files_list = []
         for ext in fois:
             files_list.extend(search_directory(os.path.abspath(os.curdir), ext))
-        if len(files_list) < 2 or not all(any(item in file for file in files_list) for item in ["000_Patient_Info","000_Static_PCP_Info"]):
-            print("\nNo Static_PCP_Info or Patient_Info needed for study initiation found!\n"+
-                  "\nTerminating......")
+        if len(files_list) < 2 or not all(any(item in file for file in files_list) for item in ["000_Patient_Info","000_PCP_Info_Weekly"]):
+            print("\nNo weekly PCP or Patient info needed for weekly run found!\n")
+            print("Check 'Patient_Info' and 'PCP_Info_Weekly' directories for filenames with the following dates:")
+            print(week_list)
+            print("\nTerminating......")
             sys.exit()
         elif len(files_list) > 2:
-            print("\nMultiple Static_PCP_Info or Patient_Info found!\n"+
-                  "\nPlease check the data for continuity at beginning of study.\n"+
+            print("\nMultiple PCP or Patient files found for this week!\n")
+            print(files_list)
+            
+            print("\nPlease check the data for workflow continuity.\n"+
                   "\nTerminating......\n")
             sys.exit()
         else:
             print("\nPopulating dict variable.....\n")
             pcp_dict = {}
-            print("\nReading in PCP data.....\n")
-            pcp_dict['pcp'] = pd.read_csv([s for s in files_list if "PCP" in s][0])
-            print("\nReading in Patient data.....\n")
+            print("\nReading in weekly PCP data.....\n")
+            #pcp_dict['pcp'] = pd.read_csv([s for s in files_list if "PCP" in s][0])
+            pcp_dynamic_data = pd.read_csv([s for s in files_list if "PCP" in s][0])
+            pcp_dynamic_data['study_id'] = pcp_dynamic_data['study_id'].str.lower()
+            pcp_dict['pcp'] = pd.merge(pcp_static_data, pcp_dynamic_data, on=['study_id'], how='inner')
+            print("\nReading in weekly Patient data.....\n")
             pcp_dict['patients'] = pd.read_csv([s for s in files_list if "Patient" in s][0])
             print("\nCleaning variable names with `janitor`.....\n")
             for frames in list(pcp_dict.keys()):
@@ -101,18 +125,42 @@ def import_pt_info(run_time):
             pcp_dict['reward'] = True
     return pcp_dict
 
-def import_pt_outcomes(pcp_dict,run_time):
-    week_list = [str(d.date()) for d in pd.date_range(relative_date(run_time-timedelta(7), 0, 0), periods=7).to_pydatetime().tolist()]
-    fois = [s + "*patient_outcomes*.csv" for s in week_list]
-    files_list = []
-    for ext in fois:
-        files_list.extend(search_directory(os.path.abspath(os.curdir), ext))
-    if pcp_dict['reward'] == True and len(files_list) > 0:
+def import_pt_priors(pcp_dict,run_time):
+    #week_list = [str(d.date()) for d in pd.date_range(relative_date(run_time-timedelta(7), 0, 0), periods=7).to_pydatetime().tolist()]
+    week_list = [str(d.date()) for d in pd.date_range(relative_date(run_time-timedelta(14), 4, 0), periods=11).to_pydatetime().tolist()]
+    rank_fois = [s + "*rank_log*.csv" for s in week_list]
+    prior_rank_file_list = []
+    
+    for ext in rank_fois:
+        prior_rank_file_list.extend(search_directory(os.path.abspath(os.curdir), ext))
+    
+    past_factor_fois = [s + "*past_factor_assignment*.csv" for s in week_list]
+    past_factor_file_list = []
+    
+    for ext in past_factor_fois:
+        past_factor_file_list.extend(search_directory(os.path.abspath(os.curdir), ext))
+    if pcp_dict['reward'] == True and len(prior_rank_file_list) > 0 and len(past_factor_file_list) > 0:
         try:
-            pcp_dict['patients']=pd.merge(pcp_dict['patients'],pd.read_csv(files_list[-1]), how="left", on=["study_id","pat_study_id"])
+            prior_ranks = pd.read_csv(prior_rank_file_list[-1])
         except FileNotFoundError:
-            print("\nNo patient outcome files found.\n" +
+            print("\nNo prior rank files found!\n" +
                   "\nTerminating.....\n")
+        try:
+            past_factors = pd.read_csv(past_factor_file_list[-1])
+        except FileNotFoundError:
+            print("\nNo prior rank files found!\n" +
+                  "\nTerminating.....\n")
+
+        prior_ranks = prior_ranks.filter(regex='id|week')
+        
+        dflist = [pcp_dict['pcp'][['study_id']], past_factors, prior_ranks]
+        
+        #pcp_dict['reward']=pd.merge(pcp_dict['patients'], prior_ranks, how="left", on=["study_id","pat_study_id"])
+        
+        pcp_dict['reward']=reduce(lambda  left,right: pd.merge(left,right,on=['study_id'],how='left'), dflist)   
+    else:
+        print("\nNo patient outcome files found!\n" +
+              "\nTerminating.....\n")
     return pcp_dict
 
 def get_pat_study_ids(pcp_dict):

@@ -25,7 +25,7 @@ import glob
 import copy
 
 # Imports the individual functions from `.py` files
-from patient_data_nudge import import_pt_info, import_pt_outcomes
+from patient_data_nudge import import_pt_info, import_pt_priors
 from driverReward_nudge import get_reward_updates, send_rewards
 from driverRank_nudge import run_ranking, generate_rank_log, write_ehr_history, update_weekly_vars
 from exe_functions_nudge import build_path, relative_date, remove_common, search_directory
@@ -57,7 +57,8 @@ print("Checking log list for redundancy....\n")
 loglist = glob.glob(os.path.abspath(os.curdir) + ("\\_ProgramLog\\*")+".txt")
 
 # range is not an inclusive function so it has to be up to day 7 to include 0-6
-week_window = [build_path(os.path.abspath(os.curdir) + ("\\_ProgramLog"), str(d.date()) + "_RL_Personalizer_log.txt") for d in pd.date_range(relative_date(run_time, 0, 0), periods=7).to_pydatetime().tolist()]
+#week_window = [build_path(os.path.abspath(os.curdir) + ("\\_ProgramLog"), str(d.date()) + "_RL_Personalizer_log.txt") for d in pd.date_range(relative_date(run_time, 0, 0), periods=7).to_pydatetime().tolist()]
+week_window = [build_path(os.path.abspath(os.curdir) + ("\\_ProgramLog"), str(d.date()) + "_RL_Personalizer_log.txt") for d in pd.date_range(relative_date(run_time-timedelta(4), 4, 0), periods=10).to_pydatetime().tolist()]
 
 # checks to see if any of the logs in the _ProgramLog directory come from the dates in "week_window"
 if any(logfile in loglist for logfile in week_window):
@@ -80,9 +81,9 @@ pcp_dict = import_pt_info(run_time)
 # 4. Start log for program
 # Comment out the next 3 lines if you want to print to the terminal
 # Otherwise all output will go to the log file
-old_stdout = sys.stdout        
-log_file = open(fp, "w")
-sys.stdout = log_file
+# old_stdout = sys.stdout        
+# log_file = open(fp, "w")
+# sys.stdout = log_file
 
 # 5. Start main body of program
 # This is where the log output starts
@@ -106,10 +107,13 @@ print(("CHECKING FOR AVAILABLE REWARD DATA").center(100,"-") + "\n")
 
 if pcp_dict['reward'] == True:
     print(("PREVIOUS DATA FOUND, UPDATING").center(100,"-") + "\n")
+    #print(pcp_dict)
     reward_bool = True
-    pcp_dict = import_pt_outcomes(pcp_dict,run_time)
+    pcp_dict = import_pt_priors(pcp_dict,run_time)
+    print(pcp_dict)
     pcp_dict = get_reward_updates(pcp_dict, run_time)
-    send_rewards(pcp_dict, client)
+    print(pcp_dict)
+    #send_rewards(pcp_dict, client)
 else:
     print(("NO PREVIOUS DATA FOUND").center(100,"-") + "\n")
     pcp_dict.pop('reward', None)
@@ -150,9 +154,9 @@ print(ehr_log)
 print(("UPDATING WEEKLY METRICS").center(100,"-") + "\n")
 update_weekly_vars(pcp_dict, ranking_log, run_time)
 
-print(("-").center(100,"-") + "\n")
-log_file.close()
-sys.stdout = old_stdout
+# print(("-").center(100,"-") + "\n")
+# log_file.close()
+# sys.stdout = old_stdout
 
 print(("PROGRAM SUCCESSFULLY RAN").center(100,"-") + "\n")
 

@@ -31,7 +31,7 @@ def update_weekly_vars(pcp_dict, ranking_log, run_time):
 
 def generate_rank_log(ranking_log, run_time):
     fp = build_path(os.path.abspath(os.curdir) + ("\\000_RankData"), str(run_time.date()) + "_rank_log.csv")
-    ranking_log = pd.DataFrame(ranking_log[0:],columns=['study_id','weekly_counter', 'response_action_id_OpenEnc', 'noOpenEnc', 'yesOpen', 'response_action_id_Simplification', 'noSimplification', 'yesSimplification', 'response_action_id_ColdState', 'noColdState', 'yesColdState', 'response_action_id_RiskFrame', 'noRiskFrame', 'yesRiskFrame'])
+    ranking_log = pd.DataFrame(ranking_log[0:],columns=['study_id','weekly_counter', 'rank_id_OpenEnc', 'response_action_id_OpenEnc', 'noOpenEnc', 'yesOpen', 'rank_id_Simplification', 'response_action_id_Simplification', 'noSimplification', 'yesSimplification', 'rank_id_ColdState', 'response_action_id_ColdState', 'noColdState', 'yesColdState', 'rank_id_RiskFraming', 'response_action_id_RiskFrame', 'noRiskFrame', 'yesRiskFrame'])
     ranking_log.to_csv(fp, index=False)
     return(ranking_log)
 
@@ -118,6 +118,7 @@ def run_ranking(pcp, pcp_unique, client):
     OpenEnc_response = client.rank(rank_request=OpenEnc_rank_request)
     OpenEnc_ranked = OpenEnc_response.reward_action_id
     
+    ranking_log.append(rank_id_OpenEnc)
     ranking_log.append(OpenEnc_ranked)
     ranking_log.append(sorted(OpenEnc_response.as_dict()['ranking'], key=lambda i: i["id"])[0]['probability'])
     ranking_log.append(sorted(OpenEnc_response.as_dict()['ranking'], key=lambda i: i["id"])[1]['probability'])
@@ -138,6 +139,7 @@ def run_ranking(pcp, pcp_unique, client):
     Simplification_response = client.rank(rank_request=Simplification_rank_request)
     Simplification_ranked = Simplification_response.reward_action_id
     
+    ranking_log.append(rank_id_Simplification)
     ranking_log.append(Simplification_ranked)
     ranking_log.append(sorted(Simplification_response.as_dict()['ranking'], key=lambda i: i["id"])[0]['probability'])
     ranking_log.append(sorted(Simplification_response.as_dict()['ranking'], key=lambda i: i["id"])[1]['probability'])
@@ -158,6 +160,7 @@ def run_ranking(pcp, pcp_unique, client):
     ColdState_response = client.rank(rank_request=ColdState_rank_request)
     ColdState_ranked = ColdState_response.reward_action_id
     
+    ranking_log.append(rank_id_ColdState)
     ranking_log.append(ColdState_ranked)
     ranking_log.append(sorted(ColdState_response.as_dict()['ranking'], key=lambda i: i["id"])[0]['probability'])
     ranking_log.append(sorted(ColdState_response.as_dict()['ranking'], key=lambda i: i["id"])[1]['probability'])
@@ -178,6 +181,7 @@ def run_ranking(pcp, pcp_unique, client):
     RiskFraming_response = client.rank(rank_request=RiskFraming_rank_request)
     RiskFraming_ranked = RiskFraming_response.reward_action_id
     
+    ranking_log.append(rank_id_RiskFraming)
     ranking_log.append(RiskFraming_ranked)
     ranking_log.append(sorted(RiskFraming_response.as_dict()['ranking'], key=lambda i: i["id"])[0]['probability'])
     ranking_log.append(sorted(RiskFraming_response.as_dict()['ranking'], key=lambda i: i["id"])[1]['probability'])
@@ -189,26 +193,6 @@ def run_ranking(pcp, pcp_unique, client):
     else:
         ehr_log.append(0)
     return ranking_log, ehr_log
-
-
-
-def shift_t0_t1_rank_ids(patient):
-    # shift these values for the next rank to store t0 values  
-    patient["reward_value_t1"] = patient["reward_value_t0"]
-    patient["flag_send_reward_value_t1"] = patient["flag_send_reward_value_t0"]
-    patient["rank_id_framing_t1"] = patient["rank_id_framing_t0"]
-    patient["rank_id_history_t1"] = patient["rank_id_history_t0"]
-    patient["rank_id_social_t1"] = patient["rank_id_social_t0"]
-    patient["rank_id_content_t1"] = patient["rank_id_content_t0"]
-    patient["rank_id_reflective_t1"] = patient["rank_id_reflective_t0"]
-    patient["reward_value_t0"] = 0
-    patient["flag_send_reward_value_t0"] = False
-    patient["rank_id_framing_t0"] = None
-    patient["rank_id_history_t0"] = None
-    patient["rank_id_social_t0"] = None
-    patient["rank_id_content_t0"] = None
-    patient["rank_id_reflective_t0"] = None
-    return patient
 
 def get_context(pcp, pcp_unique):
     pcp_out = dict(enumerate(pcp_unique['pcp'][pcp_unique['pcp'].study_id.isin([pcp])].drop(columns='study_id').to_dict('records')))
