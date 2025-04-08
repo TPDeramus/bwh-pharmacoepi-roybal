@@ -81,9 +81,9 @@ pcp_dict = import_pt_info(run_time)
 # 4. Start log for program
 # Comment out the next 3 lines if you want to print to the terminal
 # Otherwise all output will go to the log file
-# old_stdout = sys.stdout        
-# log_file = open(fp, "w")
-# sys.stdout = log_file
+old_stdout = sys.stdout        
+log_file = open(fp, "w")
+sys.stdout = log_file
 
 # 5. Start main body of program
 # This is where the log output starts
@@ -107,24 +107,25 @@ print(("CHECKING FOR AVAILABLE REWARD DATA").center(100,"-") + "\n")
 
 if pcp_dict['reward'] == True:
     print(("PREVIOUS DATA FOUND, UPDATING").center(100,"-") + "\n")
-    #print(pcp_dict)
     reward_bool = True
-    #pcp_dict = import_pt_priors(pcp_dict,run_time)
-    print(pcp_dict)
     pcp_dict = get_reward_updates(pcp_dict, run_time)
-    print(pcp_dict)
-    #send_rewards(pcp_dict, client)
+    print(pcp_dict['reward'])
+    print("\n")
+    send_rewards(pcp_dict, client)
 else:
     print(("NO PREVIOUS DATA FOUND").center(100,"-") + "\n")
     pcp_dict.pop('reward', None)
+    print("\n")
     reward_bool = False
 
 # 8. Rank Step
 # Call Personalizer to rank action features to find the correct EHR message to send today.
 
-print(("Data to be sent to personalizer:").center(100,"-") + "\n")
+print(("Data to be sent to personalizer:").center(100,"-") + ":")
 
 print(pcp_dict)
+
+print("\n")
 
 print(("RANKING PCPS").center(100,"-") + "\n")
 
@@ -141,22 +142,25 @@ for pcp in pcp_dict['pcp']['study_id'].unique():
     ranking_log.append(pcp_rank_log)
     ehr_log.append(pcp_ehr_log)
 
+print("\n")
 print(("EXPORT RANK LOG FILE").center(100,"-") + "\n")
 ranking_log = generate_rank_log(ranking_log, run_time)
 
 # 9. Output EHR and Patient Data
 print(ranking_log)
+print("\n")
 
 print(("EXPORT EHR FILE").center(100,"-") + "\n")
 ehr_log = write_ehr_history(ehr_log, run_time)
 print(ehr_log)
+print("\n")
 
 print(("UPDATING WEEKLY METRICS").center(100,"-") + "\n")
 update_weekly_vars(pcp_dict, ranking_log, run_time)
 
-# print(("-").center(100,"-") + "\n")
-# log_file.close()
-# sys.stdout = old_stdout
+print(("-").center(100,"-") + "\n")
+log_file.close()
+sys.stdout = old_stdout
 
 print(("PROGRAM SUCCESSFULLY RAN").center(100,"-") + "\n")
 

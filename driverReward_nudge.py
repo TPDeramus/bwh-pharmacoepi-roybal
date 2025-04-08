@@ -89,6 +89,7 @@ def get_reward_updates(pcp_dict, run_time):
         
         pcp_aggregates = patient_outcomes.groupby("study_id")[['reward_to_send']].mean().reset_index()
         pcp_aggregates[pcp_aggregates['reward_to_send'] > 1] = 1
+        pcp_aggregates['reward_to_send'] = pcp_aggregates['reward_to_send'].round(2)
         
         print("\nWeekly pcp aggregate rewards are:")
         print(pcp_aggregates)
@@ -135,9 +136,13 @@ def get_reward_updates(pcp_dict, run_time):
 
 def send_rewards(pcp_dict, client):  
     for pt,data_row in pcp_dict['reward'].iterrows():
-        if np.isnan(data_row['reward']) != True:
+        if np.isnan(data_row['reward_to_send']) != True:
             #Added to account for the new format
-            for column in data_row[['OpenEnc_id','Simplification_id','ColdState_id','RiskFraming_id']]:
+            for column in data_row[['rank_id_OpenEnc', 'rank_id_Simplification', 'rank_id_ColdState', 'rank_id_RiskFraming']]:
                 print("\nUpdating call " + column + "\n"
-                  "\nwith reward value " + str(data_row['reward']) + "...\n")
-                client.events.reward(event_id=column, value=data_row['reward'])
+                  "\nwith reward value " + str(data_row['reward_to_send']) + "...\n")
+                client.events.reward(event_id=column, value=data_row['reward_to_send'])
+    pcp_dict['reward'] = pcp_dict['reward'].loc[:,~pcp_dict['reward'].columns.str.startswith('rank_id')]
+    pcp_dict['reward'] = pcp_dict['reward'].drop(columns=['reward_to_send'])
+    
+    return pcp_dict
