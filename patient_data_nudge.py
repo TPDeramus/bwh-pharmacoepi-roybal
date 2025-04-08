@@ -125,44 +125,6 @@ def import_pt_info(run_time):
             pcp_dict['reward'] = True
     return pcp_dict
 
-def import_pt_priors(pcp_dict,run_time):
-    #week_list = [str(d.date()) for d in pd.date_range(relative_date(run_time-timedelta(7), 0, 0), periods=7).to_pydatetime().tolist()]
-    week_list = [str(d.date()) for d in pd.date_range(relative_date(run_time-timedelta(14), 4, 0), periods=11).to_pydatetime().tolist()]
-    rank_fois = [s + "*rank_log*.csv" for s in week_list]
-    prior_rank_file_list = []
-    
-    for ext in rank_fois:
-        prior_rank_file_list.extend(search_directory(os.path.abspath(os.curdir), ext))
-    
-    past_factor_fois = [s + "*past_factor_assignment*.csv" for s in week_list]
-    past_factor_file_list = []
-    
-    for ext in past_factor_fois:
-        past_factor_file_list.extend(search_directory(os.path.abspath(os.curdir), ext))
-    if pcp_dict['reward'] == True and len(prior_rank_file_list) > 0 and len(past_factor_file_list) > 0:
-        try:
-            prior_ranks = pd.read_csv(prior_rank_file_list[-1])
-        except FileNotFoundError:
-            print("\nNo prior rank files found!\n" +
-                  "\nTerminating.....\n")
-        try:
-            past_factors = pd.read_csv(past_factor_file_list[-1])
-        except FileNotFoundError:
-            print("\nNo prior rank files found!\n" +
-                  "\nTerminating.....\n")
-
-        prior_ranks = prior_ranks.filter(regex='id|week')
-        
-        dflist = [pcp_dict['pcp'][['study_id']], past_factors, prior_ranks]
-        
-        #pcp_dict['reward']=pd.merge(pcp_dict['patients'], prior_ranks, how="left", on=["study_id","pat_study_id"])
-        
-        pcp_dict['reward']=reduce(lambda  left,right: pd.merge(left,right,on=['study_id'],how='left'), dflist)   
-    else:
-        print("\nNo patient outcome files found!\n" +
-              "\nTerminating.....\n")
-    return pcp_dict
-
 def get_pat_study_ids(pcp_dict):
     try:
     # Subsets the pat_study_id column to find the unique pat_study_id's for each patient

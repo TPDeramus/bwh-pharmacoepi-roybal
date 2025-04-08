@@ -25,7 +25,7 @@ import glob
 import copy
 
 # Imports the individual functions from `.py` files
-from patient_data_nudge import import_pt_info, import_pt_priors
+from patient_data_nudge import import_pt_info
 from driverReward_nudge import get_reward_updates, send_rewards
 from driverRank_nudge import run_ranking, generate_rank_log, write_ehr_history, update_weekly_vars
 from exe_functions_nudge import build_path, relative_date, remove_common, search_directory
@@ -109,7 +109,7 @@ if pcp_dict['reward'] == True:
     print(("PREVIOUS DATA FOUND, UPDATING").center(100,"-") + "\n")
     #print(pcp_dict)
     reward_bool = True
-    pcp_dict = import_pt_priors(pcp_dict,run_time)
+    #pcp_dict = import_pt_priors(pcp_dict,run_time)
     print(pcp_dict)
     pcp_dict = get_reward_updates(pcp_dict, run_time)
     print(pcp_dict)
