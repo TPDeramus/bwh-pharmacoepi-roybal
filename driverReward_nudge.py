@@ -71,28 +71,28 @@ def get_reward_updates(pcp_dict, run_time):
         if len(varlist) > 0:
             patient_outcomes = patient_outcomes.clean_names(axis=None, column_names=varlist, remove_special=False, strip_underscores = "both")
         
-        #Used from:
-        #https://stackoverflow.com/questions/54653356/case-when-function-from-r-to-python
-        conditions = [
-        (patient_outcomes["out_discontinuation_yn"].eq(1) & patient_outcomes["out_taper_yn"].eq(1)),
-        (patient_outcomes["out_open_smartset_yn"].eq(1) & patient_outcomes["out_no_order_yn"].eq(1)),
-        (patient_outcomes["out_override_reason_yn"].eq(1)),
-        ]
+        # #Used from:
+        # #https://stackoverflow.com/questions/54653356/case-when-function-from-r-to-python
+        # conditions = [
+        # (patient_outcomes["out_discontinuation_yn"].eq(1) & patient_outcomes["out_taper_yn"].eq(1)),
+        # (patient_outcomes["out_open_smartset_yn"].eq(1) & patient_outcomes["out_no_order_yn"].eq(1)),
+        # (patient_outcomes["out_override_reason_yn"].eq(1)),
+        # ]
         
-        pt_reward_vals = [1,0.2,0.1]
+        # pt_reward_vals = [1,0.2,0.1]
         
-        patient_outcomes["reward_to_send"] = np.select(conditions, pt_reward_vals, default=0)
+        # patient_outcomes["reward_to_send"] = np.select(conditions, pt_reward_vals, default=0)
         
-        print("\nWeekly patient reward values are pulled from:")
-        print(reward_outputs_list_current)
-        print(patient_outcomes)
+        # print("\nWeekly patient reward values are pulled from:")
+        # print(reward_outputs_list_current)
+        # print(patient_outcomes)
         
-        pcp_aggregates = patient_outcomes.groupby("study_id")[['reward_to_send']].mean().reset_index()
-        pcp_aggregates[pcp_aggregates['reward_to_send'] > 1] = 1
-        pcp_aggregates['reward_to_send'] = pcp_aggregates['reward_to_send'].round(2)
+        # pcp_aggregates = patient_outcomes.groupby("study_id")[['reward_to_send']].mean().reset_index()
+        # pcp_aggregates[pcp_aggregates['reward_to_send'] > 1] = 1
+        # pcp_aggregates['reward_to_send'] = pcp_aggregates['reward_to_send'].round(2)
         
-        print("\nWeekly pcp aggregate rewards are:")
-        print(pcp_aggregates)
+        # print("\nWeekly pcp aggregate rewards are:")
+        # print(pcp_aggregates)
         
         
         #This loads the fator outcomes assigned from last week
@@ -129,20 +129,20 @@ def get_reward_updates(pcp_dict, run_time):
         print(weekly_counter_data)
         
         #Merges the data on the PCP level
-        pcp_dict['reward'] = reduce(lambda  left,right: pd.merge(left,right, how='inner'), [pcp_dict['pcp'][['study_id']], pcp_aggregates, prior_rank_data, past_factors_data, weekly_counter_data]).fillna('void')
+        pcp_dict['reward'] = reduce(lambda  left,right: pd.merge(left,right, how='inner'), [pcp_dict['pcp'][['study_id']], patient_outcomes, prior_rank_data, past_factors_data, weekly_counter_data]).fillna('void')
         
     return pcp_dict
 
 
 def send_rewards(pcp_dict, client):  
     for pt,data_row in pcp_dict['reward'].iterrows():
-        if np.isnan(data_row['reward_to_send']) != True:
+        if np.isnan(data_row['pt_reward_avg']) != True:
             #Added to account for the new format
             for column in data_row[['rank_id_OpenEnc', 'rank_id_Simplification', 'rank_id_ColdState', 'rank_id_RiskFraming']]:
                 print("\nUpdating call " + column + "\n"
-                  "\nwith reward value " + str(data_row['reward_to_send']) + "...\n")
-                client.events.reward(event_id=column, value=data_row['reward_to_send'])
+                  "\nwith reward value " + str(data_row['pt_reward_avg']) + "...\n")
+                client.events.reward(event_id=column, value=data_row['pt_reward_avg'])
     pcp_dict['reward'] = pcp_dict['reward'].loc[:,~pcp_dict['reward'].columns.str.startswith('rank_id')]
-    pcp_dict['reward'] = pcp_dict['reward'].drop(columns=['reward_to_send'])
+    pcp_dict['reward'] = pcp_dict['reward'].drop(columns=['pt_reward_avg'])
     
     return pcp_dict

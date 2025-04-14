@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from functools import reduce
 from janitor import clean_names, remove_empty
-from exe_functions import build_path
+from exe_functions_nudge import build_path
 from datetime import datetime, timedelta
 import sys
 import glob
@@ -82,6 +82,8 @@ def import_pt_info(run_time):
                 else:
                     continue
             print("\nVariable cleaning complete.\n")
+            pcp_dict['pcp'] = pd.merge(pcp_dict['pcp'], pcp_dict['patients'])
+            pcp_dict.pop('patients', None)
             pcp_dict['reward'] = False
     else:
         #week_list = [str(d.date()) for d in pd.date_range(relative_date(run_time-timedelta(7), 0, 0), periods=7).to_pydatetime().tolist()]
@@ -122,6 +124,8 @@ def import_pt_info(run_time):
                 else:
                     continue
             print("\nVariable cleaning complete.\n")
+            pcp_dict['pcp'] = pd.merge(pcp_dict['pcp'], pcp_dict['patients'])
+            pcp_dict.pop('patients', None)
             pcp_dict['reward'] = True
     return pcp_dict
 

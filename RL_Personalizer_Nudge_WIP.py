@@ -77,13 +77,17 @@ print(("IMPORT NUDGE PCP AND PARTICIPANT DATA").center(100,"-") + "\n")
 # This loads all the pcp and patient data as a dictionary full of dataframes
 pcp_dict = import_pt_info(run_time)
 
+if pcp_dict['pcp'].empty == True:
+    print(("AGGREGATED PCP DATA PRODUCES EMPTY DATAFRAME").center(100,"-") + "\n")
+    print(("Check the data and dates of files and re-run").center(100,"-") + "\n")
+    sys.exit()
 
 # 4. Start log for program
 # Comment out the next 3 lines if you want to print to the terminal
 # Otherwise all output will go to the log file
-old_stdout = sys.stdout        
-log_file = open(fp, "w")
-sys.stdout = log_file
+# old_stdout = sys.stdout        
+# log_file = open(fp, "w")
+# sys.stdout = log_file
 
 # 5. Start main body of program
 # This is where the log output starts
@@ -109,6 +113,14 @@ if pcp_dict['reward'] == True:
     print(("PREVIOUS DATA FOUND, UPDATING").center(100,"-") + "\n")
     reward_bool = True
     pcp_dict = get_reward_updates(pcp_dict, run_time)
+    if pcp_dict['reward'].empty == True:
+        print(("AGGREGATED REWARD DATA PRODUCES EMPTY DATAFRAME").center(100,"-") + "\n")
+        print(("Check the data and dates of files and re-run").center(100,"-") + "\n")
+        print(("Mismatch between the weekly counter for rank_id and past factors are likely").center(100,"-") + "\n")
+        # print(("-").center(100,"-") + "\n")
+        # log_file.close()
+        # sys.stdout = old_stdout
+        sys.exit()
     print(pcp_dict['reward'])
     print("\n")
     send_rewards(pcp_dict, client)
@@ -158,9 +170,9 @@ print("\n")
 print(("UPDATING WEEKLY METRICS").center(100,"-") + "\n")
 update_weekly_vars(pcp_dict, ranking_log, run_time)
 
-print(("-").center(100,"-") + "\n")
-log_file.close()
-sys.stdout = old_stdout
+# print(("-").center(100,"-") + "\n")
+# log_file.close()
+# sys.stdout = old_stdout
 
 print(("PROGRAM SUCCESSFULLY RAN").center(100,"-") + "\n")
 

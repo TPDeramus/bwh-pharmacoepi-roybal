@@ -2,7 +2,7 @@
 from azure.cognitiveservices.personalizer import PersonalizerClient
 from azure.cognitiveservices.personalizer.models import RankRequest
 from msrest.authentication import CognitiveServicesCredentials
-from Actions import get_framing_actions, get_history_actions, get_social_actions, get_content_actions, get_reflective_actions
+#from Actions import get_framing_actions, get_history_actions, get_social_actions, get_content_actions, get_reflective_actions
 from Actions_nudge import get_OpenEnc_actions, get_Simplification_actions, get_ColdState_actions, get_RiskFraming_actions
 from datetime import datetime, date, timedelta
 import sys
@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 from itertools import groupby
-from exe_functions import build_path
+from exe_functions_nudge import build_path
 
 def update_weekly_vars(pcp_dict, ranking_log, run_time):
     fp = build_path(os.path.abspath(os.curdir) + ("\\000_Past_Factor_Assignment"), str(run_time.date()) + "_past_factor_assignment.csv")
@@ -198,23 +198,36 @@ def run_ranking(pcp, pcp_unique, client):
     return ranking_log, ehr_log
 
 def get_context(pcp, pcp_unique):
-    pcp_out = dict(enumerate(pcp_unique['pcp'][pcp_unique['pcp'].study_id.isin([pcp])].drop(columns='study_id').to_dict('records')))
+    patlist = ['pat_age', 'pat_sex', 'pat_race', 'pat_ethnicity', 'pat_language', 'encounter_weekday', 'encounter_time', 'hosp_last90days_yn', 'er_visit_last90days_yn', 'dementia_yn', 'depression_yn', 'anxiety_yn', 'insomnia_yn', 'chronicpain_yn', 'samepcp_yn', 'days_since_last_pcpvisit', 'nb_pcp_visits_365days', 'pcp_prescribed_highriskmed_yn', 'nb_eligible_meds_180days', 'benzo_yn_180days', 'sedativehypnotic_yn_180days', 'anticholinergic_yn_180days', 'nb_pills_180days', 'telemedicine_visit_yn']
+    #pcp_out = dict(enumerate(pcp_unique['pcp'][pcp_unique['pcp'].study_id.isin([pcp])].drop(columns='study_id').to_dict('records')))
+    #pcp_out['pcp'] = pcp_out.pop(0)
+    pcp_out = dict(enumerate(pcp_unique['pcp'][pcp_unique['pcp'].study_id.isin([pcp])][[column for column in pcp_unique['pcp'].columns if column not in patlist]].to_dict('records')))
     pcp_out['pcp'] = pcp_out.pop(0)
-    pcp_out['patients'] = {}
-    patframe = pcp_unique['patients'][pcp_unique['patients'].study_id.isin([pcp])].drop(columns='study_id')
+    patout = dict(enumerate(pcp_unique['pcp'][pcp_unique['pcp'].study_id.isin([pcp])][[column for column in pcp_unique['pcp'].columns if column in patlist]].to_dict('records')))
+    patout['patient_averages'] = patout.pop(0)
+    pcp_out.update(patout)
+    #pcp_out['patients'] = {}
+    # patframe = pcp_unique['patients'][pcp_unique['patients'].study_id.isin([pcp])].drop(columns='study_id')
     
-    for index, pat_study_id in patframe.iterrows():
-        patid = pat_study_id['pat_study_id']
-        patout = dict(enumerate(patframe[patframe.pat_study_id.isin([patid])].drop(columns='pat_study_id').to_dict('records')))
-        patout[patid] = patout.pop(0)
-        pcp_out['patients'].update(patout)
+    # for index, pat_study_id in patframe.iterrows():
+    #     patid = pat_study_id['pat_study_id']
+    #     patout = dict(enumerate(patframe[patframe.pat_study_id.isin([patid])].drop(columns='pat_study_id').to_dict('records')))
+    #     patout[patid] = patout.pop(0)
+    #     pcp_out['patients'].update(patout)
     
     if 'reward' in pcp_unique:
         patout = dict(enumerate(pcp_unique['reward'][pcp_unique['reward'].study_id.isin([pcp])][[column for column in pcp_unique['reward'].columns if column.startswith('nb')]].to_dict('records')))
         patout['weekly_reward_info'] = patout.pop(0)
         pcp_out.update(patout)
         patout = pcp_unique['reward'][pcp_unique['reward'].study_id.isin([pcp])][[column for column in pcp_unique['reward'].columns if 'response_action_id' in column]].to_dict('records')
+        
+        patout = dict(enumerate(pcp_unique['reward'][pcp_unique['reward'].study_id.isin([pcp])][[column for column in pcp_unique['reward'].columns if column.startswith('out')]].to_dict('records')))
+        patout['weekly_outcomes'] = patout.pop(0)
+        pcp_out.update(patout)
+        
+        patout = dict(enumerate(pcp_unique['reward'][pcp_unique['reward'].study_id.isin([pcp])][[column for column in pcp_unique['reward'].columns if 'response_action_id' in column]].to_dict('records')))
         patout = patout[0]
+        #patout = pcp_out
         keypat = list(patout.keys())
         keyval = list(patout.values())
         for keys in keypat:
