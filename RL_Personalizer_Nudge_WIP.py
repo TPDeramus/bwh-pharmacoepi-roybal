@@ -85,9 +85,9 @@ if pcp_dict['pcp'].empty == True:
 # 4. Start log for program
 # Comment out the next 3 lines if you want to print to the terminal
 # Otherwise all output will go to the log file
-# old_stdout = sys.stdout        
-# log_file = open(fp, "w")
-# sys.stdout = log_file
+old_stdout = sys.stdout        
+log_file = open(fp, "w")
+sys.stdout = log_file
 
 # 5. Start main body of program
 # This is where the log output starts
@@ -170,9 +170,9 @@ print("\n")
 print(("UPDATING WEEKLY METRICS").center(100,"-") + "\n")
 update_weekly_vars(pcp_dict, ranking_log, run_time)
 
-# print(("-").center(100,"-") + "\n")
-# log_file.close()
-# sys.stdout = old_stdout
+print(("-").center(100,"-") + "\n")
+log_file.close()
+sys.stdout = old_stdout
 
 print(("PROGRAM SUCCESSFULLY RAN").center(100,"-") + "\n")
 
