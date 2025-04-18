@@ -16,19 +16,31 @@ from exe_functions_nudge import build_path
 
 def update_weekly_vars(pcp_dict, ranking_log, run_time):
     fp = build_path(os.path.abspath(os.curdir) + ("\\000_Past_Factor_Assignment"), str(run_time.date()) + "_past_factor_assignment.csv")
-    if pcp_dict['pcp'][[column for column in pcp_dict['pcp'].columns if column.startswith('nb') or column.endswith('id')]].shape[1]==1:
-        week_update = pcp_dict['reward'][[column for column in pcp_dict['reward'].columns if column.startswith('nb') or column.endswith('id')]].assign(nb_weeks_since_encounter=0, nb_weeks_since_coldstate=0, nb_weeks_since_simplification = 0, nb_weeks_since_riskframing = 0)
+    if "reward" in pcp_dict:
+        if pcp_dict['pcp'][[column for column in pcp_dict['pcp'].columns if column.startswith('nb') or column.endswith('id')]].shape[1]==1:
+            week_update = pcp_dict['reward'][[column for column in pcp_dict['reward'].columns if column.startswith('nb') or column.endswith('id')]].assign(nb_weeks_since_encounter=0, nb_weeks_since_coldstate=0, nb_weeks_since_simplification = 0, nb_weeks_since_riskframing = 0)
+        else:
+            week_update = pcp_dict['reward'][[column for column in pcp_dict['reward'].columns if column.startswith('nb') or column.endswith('id')]]
+            week_update = pd.merge(week_update,ranking_log, on=["study_id"])
+            week_update['nb_weeks_since_encounter'] = week_update.apply(lambda X: 0 if X.response_action_id_OpenEnc == 'yesOpenEnc' else X.nb_weeks_since_encounter + 1, axis=1)
+            week_update['nb_weeks_since_coldstate'] = week_update.apply(lambda X: 0 if X.response_action_id_ColdState == 'yesColdState' else X.nb_weeks_since_coldstate + 1, axis=1)
+            week_update['nb_weeks_since_simplification'] = week_update.apply(lambda X: 0 if X.response_action_id_Simplification == 'yesSimplification' else X.nb_weeks_since_simplification + 1, axis=1)
+            week_update['nb_weeks_since_riskframing'] = week_update.apply(lambda X: 0 if X.response_action_id_RiskFrame == 'yesRiskFrame' else X.nb_weeks_since_riskframing + 1, axis=1)
+            week_update = week_update[[column for column in pcp_dict['reward'].columns if column.startswith('nb') or column.endswith('id')]]
+            print("\nWeekly updates have resulted in:")
+            print(week_update)
+            print("\n")
+            week_update.to_csv(fp, index=False)
     else:
-        week_update = pcp_dict['reward'][[column for column in pcp_dict['reward'].columns if column.startswith('nb') or column.endswith('id')]]
-        week_update = pd.merge(week_update,ranking_log, on=["study_id"])
+        week_update = ranking_log.assign(nb_weeks_since_encounter=0, nb_weeks_since_coldstate=0, nb_weeks_since_simplification = 0, nb_weeks_since_riskframing = 0)
         week_update['nb_weeks_since_encounter'] = week_update.apply(lambda X: 0 if X.response_action_id_OpenEnc == 'yesOpenEnc' else X.nb_weeks_since_encounter + 1, axis=1)
         week_update['nb_weeks_since_coldstate'] = week_update.apply(lambda X: 0 if X.response_action_id_ColdState == 'yesColdState' else X.nb_weeks_since_coldstate + 1, axis=1)
         week_update['nb_weeks_since_simplification'] = week_update.apply(lambda X: 0 if X.response_action_id_Simplification == 'yesSimplification' else X.nb_weeks_since_simplification + 1, axis=1)
         week_update['nb_weeks_since_riskframing'] = week_update.apply(lambda X: 0 if X.response_action_id_RiskFrame == 'yesRiskFrame' else X.nb_weeks_since_riskframing + 1, axis=1)
-        week_update = week_update[[column for column in pcp_dict['reward'].columns if column.startswith('nb') or column.endswith('id')]]
         print("\nWeekly updates have resulted in:")
         print(week_update)
         print("\n")
+        week_update = week_update[[column for column in week_update.columns if column.startswith('nb') or column.endswith('id')]]
         week_update.to_csv(fp, index=False)
     return None
 

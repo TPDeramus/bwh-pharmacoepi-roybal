@@ -37,6 +37,7 @@ def import_pt_info(run_time):
                 files_list = []
                 for ext in fois:
                     files_list.extend(search_directory(os.path.abspath(os.curdir), ext))
+                files_list = [ x for x in files_list if "static" not in x ]
                 #print(files_list)
             else:
                 start_date = input("\nNo start date identified, please type one below in the format YYYY-MM-DD.\n")
@@ -46,13 +47,14 @@ def import_pt_info(run_time):
                     files_list = []
                     for ext in fois:
                         files_list.extend(search_directory(os.path.abspath(os.curdir), ext))
+                        files_list = [ x for x in files_list if "static" not in x ]
                 except SyntaxError:
                     print("Date format failed to parse!")
         else:
             print("\nInput was not 'yes' or 'no'. Please try again.\n")
             sys.exit()
         #print(files_list)
-        if len(files_list) < 2 or (not all(any(item in file for file in files_list) for item in ["000_Patient_Info","000_Static_PCP_Info"])):
+        if len(files_list) < 2 or (not all(any(item in file for file in files_list) for item in ["000_Patient_Info","000_PCP_Info_Weekly"])):
             print("\nNo starting PCP or Patient needed for study initiation found!\n"+
                   "\nTerminating......\n")
             #print(files_list)
