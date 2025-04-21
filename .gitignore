@@ -54,3 +54,5 @@ RL_Personalizer_testing.py
 production_environments/
 testing_program_version/
 inputs/*.xlsx
+*.csv
+_ProgramLog/*
