@@ -62,7 +62,7 @@ week_window = [build_path(os.path.abspath(os.curdir) + ("\\_ProgramLog"), str(d.
 
 # checks to see if any of the logs in the _ProgramLog directory come from the dates in "week_window"
 if any(logfile in loglist for logfile in week_window):
-    input("\nThe workflow seems to have been run already sometime between:\n" + [str(d.date()) for d in pd.date_range(relative_date(run_time, 0, 0), periods=7).to_pydatetime().tolist()][0]
+    input("\nThe workflow seems to have been run already sometime between:\n" + [str(d.date()) for d in pd.date_range(relative_date(run_time-timedelta(4), 4, 0), periods=10).to_pydatetime().tolist()][0]
     + "\nto:\n"+ [str(d.date()) for d in pd.date_range(relative_date(run_time, 0, 0), periods=7).to_pydatetime().tolist()][6]
     + "\nIt will now automatically stop to avoid sending redundant information to Personalizer"
     + "\nPlease contact those involved to confirm if you are seeing this message in error.\n"
