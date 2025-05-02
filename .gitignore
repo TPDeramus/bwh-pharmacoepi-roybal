@@ -47,5 +47,4 @@ testing_program_version/
 NudgeDataDownload/
 *.csv
 *.xlsx
-*.zip
 *.json
