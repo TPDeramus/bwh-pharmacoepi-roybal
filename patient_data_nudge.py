@@ -55,11 +55,13 @@ def import_pt_info(run_time):
             sys.exit()
         #print(files_list)
         if len(files_list) < 2 or (not all(any(item in file for file in files_list) for item in ["000_Patient_Info","000_PCP_Info_Weekly"])):
+            print(files_list)
             print("\nNo starting PCP or Patient needed for study initiation found!\n"+
                   "\nTerminating......\n")
             #print(files_list)
             sys.exit()
         elif len(files_list) > 2:
+            print(files_list)
             print("\nMultiple PCP or Patient files for study initiation found!\n"+
                   "\nPlease check the data for continuity at beginning of study.\n"+
                   "\nTerminating......\n")
@@ -69,12 +71,13 @@ def import_pt_info(run_time):
             print("\nPopulating dict variable.....\n")
             pcp_dict = {}
             print("\nReading in weekly PCP data.....\n")
+            print("\nCleaning variable names with `janitor`.....\n")
             pcp_dynamic_data = pd.read_csv([s for s in files_list if "PCP" in s][0])
+            pcp_dynamic_data = pcp_dynamic_data.clean_names(axis='columns')
             pcp_dynamic_data['study_id'] = pcp_dynamic_data['study_id'].str.lower()
             pcp_dict['pcp'] = pd.merge(pcp_static_data, pcp_dynamic_data, on=['study_id'], how='inner')
             print("\nReading in Patient data.....\n")
             pcp_dict['patients'] = pd.read_csv([s for s in files_list if "Patient" in s][0])
-            print("\nCleaning variable names with `janitor`.....\n")
             
             for frames in list(pcp_dict.keys()):
                 pcp_dict[frames] = pcp_dict[frames].clean_names(axis='columns')
@@ -113,6 +116,7 @@ def import_pt_info(run_time):
             print("\nReading in weekly PCP data.....\n")
             #pcp_dict['pcp'] = pd.read_csv([s for s in files_list if "PCP" in s][0])
             pcp_dynamic_data = pd.read_csv([s for s in files_list if "PCP" in s][0])
+            pcp_dynamic_data = pcp_dynamic_data.clean_names(axis='columns')
             pcp_dynamic_data['study_id'] = pcp_dynamic_data['study_id'].str.lower()
             pcp_dict['pcp'] = pd.merge(pcp_static_data, pcp_dynamic_data, on=['study_id'], how='inner')
             print("\nReading in weekly Patient data.....\n")

@@ -101,7 +101,8 @@ print(("CREATE PERSONALIZER CLIENT").center(100,"-") + "\n")
 with open(build_path(os.path.abspath(os.curdir) + ("\\.keys"), "azure-personalizer-key.txt"), 'r') as f:
      personalizer_key = f.read().rstrip()
 client = PersonalizerClient(
-    "https://bwh-pharmacoepi-roybal-dev-e2-ehr-cog.cognitiveservices.azure.com/", 
+    #(Change the URL below to your personalizer instance)
+    "https://personalizer-nudge.azure-api.net/",
     CognitiveServicesCredentials(personalizer_key)
 )
 
